@@ -14,3 +14,6 @@
 
 # ignore object files
 *.o
+
+# ignore useless
+.vscode

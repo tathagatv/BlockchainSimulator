@@ -58,7 +58,3 @@ using ordered_set = tree<T, null_type, less<T>, rb_tree_tag, tree_order_statisti
 #define rall(v) (v).rbegin(), (v).rend()
 #define runtime() (int)(1000 * ((double)clock()) / CLOCKS_PER_SEC)
 
-// mt19937 rng(chrono::steady_clock::now().time_since_epoch().count());
-// mt19937_64 rng64(chrono::steady_clock::now().time_since_epoch().count());
-// #define shuf(v) shuffle((v).begin(), (v).end(), rng);
-// Use mt19937_64 for 64 bit random numbers.

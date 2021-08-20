@@ -4,6 +4,11 @@
 #include "headers.h"
 using namespace std;
 
+extern mt19937 rng;
+extern mt19937_64 rng64;
+#define random_shuffle(v) shuffle((v).begin(), (v).end(), rng);
+// Use mt19937_64 for 64 bit random numbers.
+
 // Forward declarations
 class Transaction; 
 class Block; 
@@ -22,16 +27,21 @@ class Simulator;
 // ======================================================================= //
 class Transaction {
 public:
+	static int counter;
 	// units = KB
-	int size = 1;
+	int size, id, amount;
+	Peer *sender, *receiver;
+	Transaction(Peer* a, Peer* b, int coins);
 };
 
 // ======================================================================= //
 class Block {
 public:
+	static int max_size;
+	static int counter;
 	// units = KB
-	int size;
-	int max_size = 1000;
+	int size, id, depth;
+	vector<Transaction*> txns;
 	vector<Block*> next;
 	Block* parent;
 };
@@ -39,16 +49,19 @@ public:
 // ======================================================================= //
 class Blockchain {
 public:
-	int size;
 	Block* genesis;
+	Blockchain();
 	void add(Block* parent, Block* b);
 };
 
 // ======================================================================= //
 class Link {
-	ld ro, c, d;
+	default_random_engine generator;
+	exponential_distribution<ld> exp;
+	ld ro, c;
 	Peer* peer;
-	ld get_delay();
+	Link(Peer* p, bool is_fast);
+	ld get_delay(int length);
 };
 
 // ======================================================================= //
@@ -91,15 +104,24 @@ class BroadcastMinedBlock : Event {
 
 // ======================================================================= //
 class Peer {
+public:
+	static int counter;
 	static vector<Peer> peers;
-private:
+	int id;
+	bool is_fast;
 	vector<int> balances;
+	Peer();
+	static void get_new_peers(int n, int num_slow);
 };
 
 // ======================================================================= //
 class Simulator {
 public:
+	int n, slow_peers;
+	ld Tk, Ttx;
+	Simulator(int n, ld z);	
 	set<Event> events;
+	void form_peer_network();
 	void init_events();
 	void start();
 };

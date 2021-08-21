@@ -8,7 +8,11 @@ Simulator::Simulator(int n_, ld z_) {
 }
 
 void Simulator::get_new_peers() {
+
     Peer::counter = 1;
+    Peer::total_peers = n;
+    Peer::Ttx = Ttx;
+
     peers.resize(n);
     for (int i = 0; i < slow_peers; i++)
         peers[i].is_fast = false;

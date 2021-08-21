@@ -56,6 +56,7 @@ public:
 
 // ======================================================================= //
 class Link {
+public:
 	default_random_engine generator;
 	exponential_distribution<ld> exp;
 	ld ro, c;
@@ -67,63 +68,67 @@ class Link {
 // ======================================================================= //
 class Event {
 public:
-	int timestamp;
-	virtual void run();
+	ld timestamp;
+	virtual void run(Simulator* sim);
 	bool operator<(const Event& other);
 };
 
 // ======================================================================= //
 class SendTransaction : Event {
-	void run();
+	void run(Simulator* sim);
 };
 
 // ======================================================================= //
 class ReceiveTransaction : Event {
-	void run();
+	void run(Simulator* sim);
 };
 
 // ======================================================================= //
 class BroadcastTransaction : Event {
-	void run();
+	void run(Simulator* sim);
 };
 
 // ======================================================================= //
 class ReceiveBlock : Event {
-	void run();
+	void run(Simulator* sim);
 };
 
 // ======================================================================= //
 class ForwardBlock : Event {
-	void run();
+	void run(Simulator* sim);
 };
 
 // ======================================================================= //
 class BroadcastMinedBlock : Event {
-	void run();
+	void run(Simulator* sim);
 };
 
 // ======================================================================= //
 class Peer {
 public:
 	static int counter;
-	static vector<Peer> peers;
 	int id;
 	bool is_fast;
 	vector<int> balances;
+	vector<Link> adj;
+
 	Peer();
-	static void get_new_peers(int n, int num_slow);
+	static void add_edge(Peer* a, Peer* b);
 };
 
 // ======================================================================= //
 class Simulator {
 public:
-	int n, slow_peers;
+	int n, slow_peers, edges;
 	ld Tk, Ttx;
-	Simulator(int n, ld z);	
 	set<Event> events;
-	void form_peer_network();
+	vector<Peer> peers;
+
+	Simulator(int n, ld z);	
+	void get_new_peers();
+	void form_random_network();
 	void init_events();
-	void start();
+	void run(ld end_time);
 };
 
 #endif

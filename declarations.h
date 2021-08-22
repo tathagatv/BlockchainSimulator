@@ -154,7 +154,7 @@ class Simulator {
 public:
 	int n, slow_peers, edges;
 	ld Tk, Ttx;
-	Simulator(int n, ld z);	
+	Simulator(int n, ld z, ld Ttx, int edges);	
 	set<Event*, EventPtrComp> events;
 	vector<Peer> peers;
 

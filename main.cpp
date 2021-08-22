@@ -25,4 +25,8 @@ int main(int argc, char *argv[]) {
 
 	int n = argparser.get<int>("-n");
 	cout << "Number of peers = " << n << endl;
+	Simulator simulator(n, 0.5, 5, n*2);
+	simulator.run(100);
+
+	return 0;
 }

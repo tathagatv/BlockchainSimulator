@@ -18,6 +18,7 @@ GenerateTransaction::GenerateTransaction(ld timestamp_, int peer_id_): Event(tim
 }
 
 void GenerateTransaction::run(Simulator *sim){
+	cout<<"GenerateTransaction at peer "<<this->peer_id<<" "<<"at time "<<this->timestamp<<"\n";
 	set<Event*> new_events = sim->peers[this->peer_id].generate_transaction(this->timestamp);
 	for(Event* ev: new_events){
 		sim->events.insert(ev);
@@ -32,6 +33,7 @@ ForwardTransaction::ForwardTransaction(ld timestamp_, int peer_id_, int source_i
 }
 
 void ForwardTransaction::run(Simulator *sim){
+	cout<<"ForwardTransaction at peer "<<this->peer_id<<" with source from "<<this->source_id<<" at time "<<this->timestamp<<"\n";
 	set<Event*> new_events = sim->peers[this->peer_id].forward_transaction(this->timestamp, this->source_id, this->txn);
 	for(Event* ev: new_events){
 		sim->events.insert(ev);
@@ -46,6 +48,7 @@ ReceiveTransaction::ReceiveTransaction(ld timestamp_, int sender_id_, int receiv
 }
 
 void ReceiveTransaction::run(Simulator *sim){
+	cout<<"ReceiveTransaction at peer "<<this->receiver_id<<" with source from "<<this->sender_id<<" at time "<<this->timestamp<<"\n";
 	set<Event*> new_events = sim->peers[this->receiver_id].receive_transaction(this->timestamp, this->sender_id, this->txn);
 	for(Event* ev: new_events){
 		sim->events.insert(ev);

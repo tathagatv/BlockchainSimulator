@@ -1,10 +1,12 @@
 #include "declarations.h"
 using namespace std;
 
-Simulator::Simulator(int n_, ld z_) {
+Simulator::Simulator(int n_, ld z_, ld Ttx_, int edges_){
     n = n_;
     z_ = min((ld)1, max(z_, (ld)0));
     slow_peers = z_ * n;
+    Ttx = Ttx_;
+    edges = edges_;
 }
 
 bool EventPtrComp::operator()(const Event* lhs, const Event* rhs) const{
@@ -24,8 +26,10 @@ void Simulator::get_new_peers() {
         peers[i].is_fast = true;
     
     random_shuffle(peers);
-    for (int i = 0; i < n; i++)
+    for (int i = 0; i < n; i++){
+        peers[i].balances[0] = 1000;
         peers[i].id = Peer::counter++;
+    }
 }
 
 void Simulator::form_random_network() {

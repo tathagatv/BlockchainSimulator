@@ -19,7 +19,7 @@ class Block;
 class Blockchain; 
 class Link; 
 class Event; 
-class SendTransaction; 
+class ForwardTransaction; 
 class ReceiveTransaction; 
 class BroadcastTransaction; 
 class ReceiveBlock; 
@@ -79,25 +79,30 @@ public:
 };
 
 // ======================================================================= //
-class SendTransaction : public Event {
+class ForwardTransaction : public Event {
 public:
-	int peer_id;
+	Peer* peer; // peer who'll forward the transaction
+	Peer* source; // peer who sent the transaction (won't forward to this peer)
+	Transaction* txn; // transaction
 	void run(Simulator* sim);
-	SendTransaction(ld timestamp, int peer_id);
+	ForwardTransaction(ld timestamp, Peer *peer, Peer* source, Transaction *txn);
 };
 
 // ======================================================================= //
 class ReceiveTransaction : public Event {
 public: 
-	Peer* peer; // peer who receives the transaction
+	Peer *sender, *receiver; // peer who receives the transaction
 	Transaction* txn; // transaction
 	void run(Simulator* sim);
-	ReceiveTransaction(ld timestamp, Peer* peer, Transaction* txn);
+	ReceiveTransaction(ld timestamp, Peer* sender, Peer* receiver, Transaction* txn);
 };
 
 // ======================================================================= //
-class BroadcastTransaction : public Event {
+class GenerateTransaction : public Event {
+public:
+	int peer_id;
 	void run(Simulator* sim);
+	GenerateTransaction(ld timestamp, int peer_id);
 };
 
 // ======================================================================= //
@@ -128,11 +133,13 @@ public:
 	bool is_fast;
 	vector<int> balances;
 	vector<Link> adj;
+	set<int> recv_pool; // all transaction ids received
+	set<Transaction*> txn_pool; // transactions not yet mined
 
 	Peer();
 	static void add_edge(Peer* a, Peer* b);
 	set<Event*> generate_transaction(ld cur_time); // generate transaction for this peer
-	set<Event*> send_transaction(ld cur_time); 
+	set<Event*> forward_transaction(ld cur_time, Peer* source, Transaction* txn); 
 };
 
 // ====================================================================== //

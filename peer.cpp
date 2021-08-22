@@ -22,18 +22,32 @@ void Peer::add_edge(Peer* a, Peer* b) {
     (a->adj).emplace_back(ab);
 }
 
-set<Event*> Peer::generate_transaction(ld cur_time){
+set<Event*> Peer::generate_next_transaction(ld cur_time){
 
     ld interArrivalTime = exp_dist_time(rng64);
     set<Event*> events;
-    Event *ev = new SendTransaction(cur_time+interArrivalTime, this->id);
+    Event *ev = new GenerateTransaction(cur_time+interArrivalTime, this->id);
     events.insert(ev);
 
     return events;
 
 }
 
-set<Event*> Peer::send_transaction(ld cur_time){
+set<Event*> Peer::forward_transaction(ld cur_time, Peer* source, Transaction *txn){
+
+    // send transation to peers
+    for(Link link: this->adj){
+        if(link.peer==source) continue;
+        ld delay = link.get_delay(TRANSACTION_SIZE);
+        Event *ev = new ReceiveTransaction(cur_time+delay, this, link.peer, txn);
+        events.insert(ev);
+    }
+
+    return events;
+
+}
+
+set<Event*> Peer::generate_transaction(ld cur_time){
 
     set<Event*> events;
 
@@ -48,20 +62,42 @@ set<Event*> Peer::send_transaction(ld cur_time){
         }
 
         Transaction *txn = new Transaction(this->id, receiver, coins);
+
+        // todo: add transaction in tranaction/recv pool
+
+        // forward the transaction to peers
+        Event *ev = new ForwardTransaction(cur_time, this, this, txn);
+
+        events.insert(ev);
         
-        // send transation to peers
-        for(Link link: adj){
-            ld delay = link.get_delay(TRANSACTION_SIZE);
-            Event *ev = new ReceiveTransaction(cur_time+delay, link.peer, txn);
-            events.insert(ev);
-        }
     }
 
     // generate new transaction
-    this->generate_transaction(cur_time);
+    set<Event*> gen_events = this->generate_next_transaction(cur_time);
+    for(Event* ev: gen_events){
+        events.insert(ev);
+    }
 
     return events;
 
+}
+
+set<Event*> Peer::receive_transaction(ld cur_time, Peer* sender, Transaction *txn){
+
+    set<Event*> events;
+
+    // if already received the transaction then ignore
+    if(this->recv_pool.find(txn->id)!=this->recv_pool.end()){
+        return set<Event*>();
+    }
+
+    recv_pool.insert(txn->id);
+    txn_pool.insert(txn);
+
+    // forward the txn to other peers
+    events.insert(new ForwardTransaction(cur_time, this, sender, txn));
+
+    return events;
 }
 
 

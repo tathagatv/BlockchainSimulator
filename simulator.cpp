@@ -69,7 +69,7 @@ void Simulator::form_random_network() {
 
 void Simulator::init_events() {
     for(Peer peer: peers){
-        set<Event*> new_events = peer.generate_transaction(START_TIME);
+        set<Event*> new_events = peer.generate_next_transaction(START_TIME);
         for(Event* ev: new_events){
             this->events.insert(ev);
         }

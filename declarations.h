@@ -81,20 +81,20 @@ public:
 // ======================================================================= //
 class ForwardTransaction : public Event {
 public:
-	Peer* peer; // peer who'll forward the transaction
-	Peer* source; // peer who sent the transaction (won't forward to this peer)
+	int peer_id; // peer who'll forward the transaction
+	int source_id; // peer who sent the transaction (won't forward to this peer)
 	Transaction* txn; // transaction
 	void run(Simulator* sim);
-	ForwardTransaction(ld timestamp, Peer *peer, Peer* source, Transaction *txn);
+	ForwardTransaction(ld timestamp, int peer_id, int source_id, Transaction *txn);
 };
 
 // ======================================================================= //
 class ReceiveTransaction : public Event {
 public: 
-	Peer *sender, *receiver; // peer who receives the transaction
+	int sender_id, receiver_id; // peer who receives the transaction
 	Transaction* txn; // transaction
 	void run(Simulator* sim);
-	ReceiveTransaction(ld timestamp, Peer* sender, Peer* receiver, Transaction* txn);
+	ReceiveTransaction(ld timestamp, int sender_id, int receiver_id, Transaction* txn);
 };
 
 // ======================================================================= //
@@ -138,8 +138,10 @@ public:
 
 	Peer();
 	static void add_edge(Peer* a, Peer* b);
+	set<Event*> generate_next_transaction(ld cur_time);
 	set<Event*> generate_transaction(ld cur_time); // generate transaction for this peer
-	set<Event*> forward_transaction(ld cur_time, Peer* source, Transaction* txn); 
+	set<Event*> forward_transaction(ld cur_time, int source_id, Transaction* txn); 
+	set<Event*> receive_transaction(ld cur_time, int sender_id, Transaction *txn);
 };
 
 // ====================================================================== //

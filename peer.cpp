@@ -33,13 +33,15 @@ set<Event*> Peer::generate_next_transaction(ld cur_time){
 
 }
 
-set<Event*> Peer::forward_transaction(ld cur_time, Peer* source, Transaction *txn){
+set<Event*> Peer::forward_transaction(ld cur_time, int source_id, Transaction *txn){
+
+    set<Event*> events;
 
     // send transation to peers
     for(Link link: this->adj){
-        if(link.peer==source) continue;
+        if(link.peer->id==source_id) continue; // source already has the txn, loop-less forwarding
         ld delay = link.get_delay(TRANSACTION_SIZE);
-        Event *ev = new ReceiveTransaction(cur_time+delay, this, link.peer, txn);
+        Event *ev = new ReceiveTransaction(cur_time+delay, this->id, link.peer->id, txn);
         events.insert(ev);
     }
 
@@ -66,7 +68,7 @@ set<Event*> Peer::generate_transaction(ld cur_time){
         // todo: add transaction in tranaction/recv pool
 
         // forward the transaction to peers
-        Event *ev = new ForwardTransaction(cur_time, this, this, txn);
+        Event *ev = new ForwardTransaction(cur_time, this->id, this->id, txn);
 
         events.insert(ev);
         
@@ -82,7 +84,7 @@ set<Event*> Peer::generate_transaction(ld cur_time){
 
 }
 
-set<Event*> Peer::receive_transaction(ld cur_time, Peer* sender, Transaction *txn){
+set<Event*> Peer::receive_transaction(ld cur_time, int sender_id, Transaction *txn){
 
     set<Event*> events;
 
@@ -95,7 +97,7 @@ set<Event*> Peer::receive_transaction(ld cur_time, Peer* sender, Transaction *tx
     txn_pool.insert(txn);
 
     // forward the txn to other peers
-    events.insert(new ForwardTransaction(cur_time, this, sender, txn));
+    events.insert(new ForwardTransaction(cur_time, this->id, sender_id, txn));
 
     return events;
 }

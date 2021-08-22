@@ -7,9 +7,13 @@ Simulator::Simulator(int n_, ld z_) {
     slow_peers = z_ * n;
 }
 
+bool EventPtrComp::operator()(const Event* lhs, const Event* rhs) const{
+    return lhs->timestamp < rhs->timestamp;
+}
+
 void Simulator::get_new_peers() {
 
-    Peer::counter = 1;
+    Peer::counter = 0;
     Peer::total_peers = n;
     Peer::Ttx = Ttx;
 
@@ -64,7 +68,12 @@ void Simulator::form_random_network() {
 }
 
 void Simulator::init_events() {
-    // events.insert()
+    for(Peer peer: peers){
+        set<Event*> new_events = peer.generate_transaction(START_TIME);
+        for(Event* ev: new_events){
+            this->events.insert(ev);
+        }
+    }
 }
 
 void Simulator::run(ld end_time) {
@@ -74,13 +83,13 @@ void Simulator::run(ld end_time) {
 
     while (!events.empty()) {
         auto it = events.begin();
-        Event event = *it;
+        Event* event = *it;
         events.erase(it);
 
-        if (event.timestamp > end_time)
+        if (event->timestamp > end_time)
             break;
 
-        event.run(this);
+        event->run(this);
     }
 } 
 

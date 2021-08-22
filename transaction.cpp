@@ -3,10 +3,10 @@ using namespace std;
 
 int Transaction::counter;
 
-Transaction::Transaction(Peer* a, Peer* b, int coins){
+Transaction::Transaction(int a, int b, int coins){
     id = counter;
     counter++;
-    sender = a;
-    receiver = b;
+    senderId = a;
+    receiverId = b;
     amount = coins;
 }

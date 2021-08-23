@@ -7,7 +7,7 @@ Link::Link(Peer* p, bool is_fast) {
     peer = p;
     uniform_real_distribution<ld> unif(0.01, 0.5);
     c = (p->is_fast && is_fast) ? 12500 : 625; 
-    exp = exponential_distribution<ld>(12 / c);
+    exp = exponential_distribution<ld>(c / 12);
     ro = unif(rng64);
 }
 

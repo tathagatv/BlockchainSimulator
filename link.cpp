@@ -6,8 +6,8 @@ Link::Link(Peer* p, bool is_fast) {
     // 100Mbps = 12500KBps
     peer = p;
     uniform_real_distribution<ld> unif(0.01, 0.5);
-    c = (is_fast) ? 12500 : 625; 
-	exp = exponential_distribution<ld>(12 / c);
+    c = (p->is_fast && is_fast) ? 12500 : 625; 
+    exp = exponential_distribution<ld>(12 / c);
     ro = unif(rng64);
 }
 

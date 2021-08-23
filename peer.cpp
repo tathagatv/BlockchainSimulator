@@ -4,104 +4,134 @@ using namespace std;
 int Peer::counter;
 int Peer::total_peers;
 ld Peer::Ttx;
+ld Peer::Tk;
 
-Peer::Peer() {  
-    balances.resize(total_peers,0);
-    assert(Ttx>0);
+Peer::Peer() {
+    balances.resize(total_peers, 0);
+    assert(Ttx > 0);
+    assert(Tk > 0);
     // avg of expo dist = 1/lambda
-    exp_dist_time = exponential_distribution<ld> (1.0/Ttx); 
-    unif_dist_peer = uniform_int_distribution<int> (0, total_peers - 1);
+    txn_interarrival_time = exponential_distribution<ld>(1.0 / Ttx);
+    block_mining_time = exponential_distribution<ld>(1.0 / Tk);
+    unif_dist_peer = uniform_int_distribution<int>(0, total_peers - 1);
+
+    blockchain = new Blockchain(this);
+}
+
+string Peer::get_name() {
+    return "Peer" + to_string(id + 1);
 }
 
 // adds a link between peer a and peer b
-void Peer::add_edge(Peer* a, Peer* b) {
-    Link ba(a, b->is_fast && a->is_fast);
-    (b->adj).emplace_back(ba);
-
-    Link ab(b, a->is_fast && b->is_fast);
+void Peer::add_edge(Peer *a, Peer *b) {
+    Link ab(b, a->is_fast);
     (a->adj).emplace_back(ab);
+
+    Link ba(a, b->is_fast);
+    (b->adj).emplace_back(ba);
 }
 
-set<Event*> Peer::generate_next_transaction(ld cur_time){
-
-    ld interArrivalTime = exp_dist_time(rng64);
-    set<Event*> events;
-    Event *ev = new GenerateTransaction(cur_time+interArrivalTime, this->id);
-    events.insert(ev);
-
-    return events;
-
+void Peer::schedule_next_transaction(Simulator* sim) {
+    ld interArrivalTime = txn_interarrival_time(rng64);
+    Event* ev = new GenerateTransaction(interArrivalTime, this);
+    sim->add_event(ev);
 }
 
-set<Event*> Peer::forward_transaction(ld cur_time, int source_id, Transaction *txn){
-
-    set<Event*> events;
-
-    // send transation to peers
-    for(Link link: this->adj){
-        if(link.peer->id==source_id) continue; // source already has the txn, loop-less forwarding
-        ld delay = link.get_delay(TRANSACTION_SIZE);
-        Event *ev = new ReceiveTransaction(cur_time+delay, this->id, link.peer->id, txn);
-        events.insert(ev);
-    }
-
-    return events;
-
-}
-
-set<Event*> Peer::generate_transaction(ld cur_time){
-
-    set<Event*> events;
-
-    if(this->balances[this->id]>0){
-        uniform_int_distribution unif_coins_dist(1,this->balances[this->id]);
+Transaction* Peer::generate_transaction(Simulator* sim) {
+    if (balances[id] > 0) {
+        uniform_int_distribution unif_coins_dist(1, balances[id]);
         int coins = unif_coins_dist(rng64);
 
         // todo: check if uniform distribution is correct for sampling receiver & no of coins
         int receiver = unif_dist_peer(rng64);
-        while(receiver==this->id){
+        while (receiver == id)
             receiver = unif_dist_peer(rng64);
-        }
 
-        Transaction *txn = new Transaction(this->id, receiver, coins);
+        Transaction *txn = new Transaction(sim->current_timestamp, this, &sim->peers[receiver], coins);
 
-        // todo: add transaction in tranaction/recv pool
+        // todo: add transaction in transaction/recv pool
+        recv_pool.insert(txn->id);
+        txn_pool.insert(txn);
 
         // forward the transaction to peers
-        Event *ev = new ForwardTransaction(cur_time, this->id, this->id, txn);
+        Event* ev = new ForwardTransaction(0, this, this, txn);
+        sim->add_event(ev);
 
-        events.insert(ev);
+        // generate new transaction
+        schedule_next_transaction(sim);
         
+        return txn;
+    } else {
+        // generate new transaction
+        schedule_next_transaction(sim);
+        return NULL;
     }
-
-    // generate new transaction
-    set<Event*> gen_events = this->generate_next_transaction(cur_time);
-    for(Event* ev: gen_events){
-        events.insert(ev);
-    }
-
-    return events;
-
 }
 
-set<Event*> Peer::receive_transaction(ld cur_time, int sender_id, Transaction *txn){
-
-    set<Event*> events;
-
-    // if already received the transaction then ignore
-    if(this->recv_pool.find(txn->id)!=this->recv_pool.end()){
-        return set<Event*>();
+void Peer::forward_transaction(Simulator* sim, Peer* source, Transaction* txn) {
+    // send transaction to peers
+    for (Link& link : adj) {
+        if (link.peer->id == source->id) continue;  // source already has the txn, loop-less forwarding
+        ld delay = link.get_delay(TRANSACTION_SIZE);
+        Event* ev = new ReceiveTransaction(delay, this, link.peer, txn);
+        sim->add_event(ev);
     }
+}
+
+void Peer::receive_transaction(Simulator* sim, Peer* sender, Transaction *txn) {
+    // if already received the transaction then ignore
+    if (recv_pool.find(txn->id) != recv_pool.end())
+        return;
 
     recv_pool.insert(txn->id);
     txn_pool.insert(txn);
 
     // forward the txn to other peers
-    events.insert(new ForwardTransaction(cur_time, this->id, sender_id, txn));
-
-    return events;
+    Event* ev = new ForwardTransaction(0, this, sender, txn);
+    sim->add_event(ev);
 }
 
+// ================== BLOCK =============================
+bool Peer::validate_txn(Transaction* txn, vector<int>& custom_balances) {
+    int balance = custom_balances[txn->sender->id];
+    return (balance >= txn->amount);
+}
 
+bool Peer::validate_block(Block* block, vector<int>& custom_balances) {
+    for (Transaction* txn : block->txns) 
+        if (!validate_txn(txn, custom_balances))
+            return false;
+    return true;
+}
 
+Block* Peer::generate_new_block(Simulator* sim) {
+    Block* block = new Block(blockchain->current_block, this);
+    for (Transaction* txn : txn_pool) {
+        if (block->size >= Block::max_size) 
+            break;
+        if (validate_txn(txn, balances))
+            block->add(txn);
+    }
+    return block;
+}
 
+void Peer::schedule_next_block(Simulator* sim) {
+    next_mining_block = generate_new_block(sim);
+    ld miningTime = block_mining_time(rng64);
+    next_mining_event = new BroadcastMinedBlock(miningTime, this);
+    sim->add_event(next_mining_event);
+}
+
+void Peer::forward_block(Simulator* sim, Peer* source, Block* block) {
+    // send block to peers
+    for (Link& link : adj) {
+        if (link.peer->id == source->id) continue;  // source already has the txn, loop-less forwarding
+        ld delay = link.get_delay(block->size);
+        Event* ev = new ReceiveBlock(delay, this, link.peer, block);
+        sim->add_event(ev);
+    }
+}
+
+void Peer::receive_block(Simulator* sim, Peer* sender, Block* block) {
+    // add prrof of work logic
+}

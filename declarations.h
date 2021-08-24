@@ -12,6 +12,7 @@ extern mt19937_64 rng64;
 // constants
 #define TRANSACTION_SIZE 1 // 1 KB
 #define START_TIME 0
+#define MINING_FEE 50
 
 // Forward declarations
 class Transaction; 
@@ -37,6 +38,7 @@ public:
 	ld timestamp;
 	Peer* sender;
 	Peer* receiver;
+
 	Transaction(ld timestamp_, Peer* sender_, Peer* receiver_, int coins);
 	string get_name();
 };
@@ -64,6 +66,7 @@ public:
 	Block* genesis;
 	Block* current_block;
 	Blockchain(Peer* p);
+
 	void add(Block* b);
 	static Block* backward(Block* b, bool collect_txn, vector<int>& balances, vector<Transaction*>& txns);
 };
@@ -74,6 +77,7 @@ public:
 	exponential_distribution<ld> exp;
 	ld ro, c;
 	Peer* peer;
+
 	Link(Peer* p, bool is_fast);
 	ld get_delay(int length);
 };
@@ -82,7 +86,8 @@ public:
 class Event {
 public:
 	ld timestamp;
-	virtual void run(Simulator* sim);
+
+	virtual void run(Simulator* sim, bool verbose);
 	bool operator<(const Event& other);
 	Event(ld timestamp_);
 	virtual ~Event() {}
@@ -96,7 +101,7 @@ public:
 	Transaction* txn; // transaction
 	
 	ForwardTransaction(ld timestamp, Peer* peer_, Peer* source_, Transaction* txn);
-	void run(Simulator* sim);
+	void run(Simulator* sim, bool verbose);
 };
 
 // ======================================================================= //
@@ -106,7 +111,7 @@ public:
 	Peer* receiver; // peer who receives the transaction
 	Transaction* txn; // transaction
 	
-	void run(Simulator* sim);
+	void run(Simulator* sim, bool verbose);
 	ReceiveTransaction(ld timestamp, Peer* sender_, Peer* receiver_, Transaction* txn);
 };
 
@@ -114,7 +119,8 @@ public:
 class GenerateTransaction : public Event {
 public:
 	Peer* payed_by;
-	void run(Simulator* sim);
+
+	void run(Simulator* sim, bool verbose);
 	GenerateTransaction(ld timestamp, Peer* p);
 };
 
@@ -125,7 +131,7 @@ public:
 	Peer* receiver; // peer who receives the block
 	Block* block; // block
 
-	void run(Simulator* sim);
+	void run(Simulator* sim, bool verbose);
 	ReceiveBlock(ld timestamp, Peer* sender_, Peer* receiver_, Block* block);
 };
 
@@ -137,15 +143,16 @@ public:
 	Block* block; // block
 	
 	ForwardBlock(ld timestamp, Peer* peer_, Peer* source_, Block* block);
-	void run(Simulator* sim);
+	void run(Simulator* sim, bool verbose);
 };
 
 // ======================================================================= //
 class BroadcastMinedBlock : public Event {
 public:
 	Peer* owner;
+
 	BroadcastMinedBlock(ld timestamp, Peer* p);
-	void run(Simulator* sim);
+	void run(Simulator* sim, bool verbose);
 };
 
 // ====================================================================== //
@@ -218,16 +225,16 @@ public:
 	ld Tk, Ttx;
 	ld current_timestamp;
 	Event* current_event;
-	Simulator(int n_, ld z_, ld Ttx_, ld Tk_, int edges_);	
 	set<Event*, EventPtrComp> events;
 	vector<Peer> peers;
 
+	Simulator(int n_, ld z_, ld Ttx_, ld Tk_, int edges_);	
 	void get_new_peers();
 	void form_random_network();
 	void init_events();
 	void add_event(Event* event);
 	void delete_event(Event* event);
-	void run(ld end_time);
+	void run(ld end_time, bool verbose_, int max_txns_, int max_blocks_);
 	void log_time(ostream& os);
 };
 

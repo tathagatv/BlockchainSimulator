@@ -7,7 +7,7 @@ ld Peer::Ttx;
 ld Peer::Tk;
 
 Peer::Peer() {
-    balances.resize(total_peers, 0);
+    balances.assign(total_peers, 0);
     assert(Ttx > 0);
     assert(Tk > 0);
     // avg of expo dist = 1/lambda
@@ -146,6 +146,7 @@ void Peer::add_block(Block* block, bool update_balances) {
             if (it != txn_pool.end())
                 txn_pool.erase(it);
         }
+        balances[block->owner->id] += MINING_FEE;
         blockchain->current_block = block;
     }
 }

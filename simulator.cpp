@@ -8,7 +8,7 @@ Simulator::Simulator(int n_, ld z_, ld Ttx_, ld Tk_, int edges_) {
     Ttx = Ttx_; Tk = Tk_;
     edges = edges_;
     current_timestamp = START_TIME;
-
+    
     Transaction::counter = 0;
     Block::max_size = 1000;
     Block::counter = 0;
@@ -27,7 +27,6 @@ void Simulator::get_new_peers() {
 
     random_shuffle(peers);
     for (int i = 0; i < n; i++) {
-        peers[i].balances[0] = 1000;
         peers[i].id = Peer::counter++;
     }
 }
@@ -89,10 +88,16 @@ void Simulator::delete_event(Event* event) {
     delete event;
 }
 
-void Simulator::run(ld end_time) {
+void Simulator::run(ld end_time_, bool verbose_, int max_txns_, int max_blocks_) {
     get_new_peers();
     form_random_network();
     init_events();
+
+    bool verbose = verbose_;
+    int max_txns = max_txns_ <= 0 ? INT_MAX : max_txns_;
+    int max_blocks = max_blocks_ <= 0 ? INT_MAX : max_blocks_;
+    ld end_time = end_time_ <= 0 ? 100 : end_time_;
+
 
     while (!events.empty()) {
         current_event = *events.begin();
@@ -100,8 +105,12 @@ void Simulator::run(ld end_time) {
 
         if (current_event->timestamp > end_time)
             break;
+        if (Transaction::counter >= max_txns)
+            break;
+        if (Block::counter >= max_blocks)
+            break;
 
-        current_event->run(this);
+        current_event->run(this, verbose);
 
         delete_event(current_event);
     }

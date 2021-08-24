@@ -65,6 +65,7 @@ public:
 	Block* current_block;
 	Blockchain(Peer* p);
 	void add(Block* b);
+	static Block* backward(Block* b, bool collect_txn, vector<int>& balances, vector<Transaction*>& txns);
 };
 
 // ======================================================================= //
@@ -150,7 +151,10 @@ public:
 // ====================================================================== //
 struct TxnPtrComp {
 	bool operator()(const Transaction* lhs, const Transaction* rhs) const {
-		return lhs->timestamp < rhs->timestamp;
+		if (lhs->timestamp != rhs->timestamp)
+			return lhs->timestamp < rhs->timestamp;
+		else
+			return lhs < rhs;
 	}
 };
 // ======================================================================= //
@@ -175,13 +179,13 @@ public:
 	BroadcastMinedBlock* next_mining_event;
 	Block* next_mining_block;
 
-	set<Block*> chain_blocks;
+	set<Block*> chain_blocks, free_blocks;
 	map<Block*, vector<Block*>> free_block_parents;
 
 	Peer();
 	static void add_edge(Peer* a, Peer* b);
 	string get_name();
-	void add_block(Block* block);
+	void add_block(Block* block, bool update_balances);
 
 	void schedule_next_transaction(Simulator* sim);
 	Transaction* generate_transaction(Simulator* sim); // generate transaction for this peer
@@ -200,7 +204,10 @@ public:
 // ====================================================================== //
 struct EventPtrComp {
 	bool operator()(const Event* lhs, const Event* rhs) const {
-		return lhs->timestamp < rhs->timestamp;
+		if (lhs->timestamp != rhs->timestamp)
+			return lhs->timestamp < rhs->timestamp;
+		else
+			return lhs < rhs;
 	}
 };
 

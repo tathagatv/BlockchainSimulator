@@ -84,6 +84,7 @@ public:
 	virtual void run(Simulator* sim);
 	bool operator<(const Event& other);
 	Event(ld timestamp_);
+	virtual ~Event() {}
 };
 
 // ======================================================================= //
@@ -174,9 +175,14 @@ public:
 	BroadcastMinedBlock* next_mining_event;
 	Block* next_mining_block;
 
+	set<Block*> chain_blocks;
+	map<Block*, vector<Block*>> free_block_parents;
+
 	Peer();
 	static void add_edge(Peer* a, Peer* b);
 	string get_name();
+	void add_block(Block* block);
+
 	void schedule_next_transaction(Simulator* sim);
 	Transaction* generate_transaction(Simulator* sim); // generate transaction for this peer
 	void forward_transaction(Simulator* sim, Peer* source, Transaction* txn); 
@@ -204,6 +210,7 @@ public:
 	int n, slow_peers, edges;
 	ld Tk, Ttx;
 	ld current_timestamp;
+	Event* current_event;
 	Simulator(int n_, ld z_, ld Ttx_, ld Tk_, int edges_);	
 	set<Event*, EventPtrComp> events;
 	vector<Peer> peers;
@@ -212,6 +219,7 @@ public:
 	void form_random_network();
 	void init_events();
 	void add_event(Event* event);
+	void delete_event(Event* event);
 	void run(ld end_time);
 	void log_time(ostream& os);
 };

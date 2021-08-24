@@ -98,6 +98,8 @@ bool Peer::validate_txn(Transaction* txn, vector<int>& custom_balances) {
 }
 
 bool Peer::validate_block(Block* block, vector<int>& custom_balances) {
+    if (block->size > Block::max_size)
+        return false;
     for (Transaction* txn : block->txns) 
         if (!validate_txn(txn, custom_balances))
             return false;
@@ -107,7 +109,7 @@ bool Peer::validate_block(Block* block, vector<int>& custom_balances) {
 Block* Peer::generate_new_block(Simulator* sim) {
     Block* block = new Block(blockchain->current_block, this);
     for (Transaction* txn : txn_pool) {
-        if (block->size >= Block::max_size) 
+        if (block->size + TRANSACTION_SIZE > Block::max_size) 
             break;
         if (validate_txn(txn, balances))
             block->add(txn);
@@ -132,6 +134,43 @@ void Peer::forward_block(Simulator* sim, Peer* source, Block* block) {
     }
 }
 
+void Peer::add_block(Block* block) {
+    blockchain->add(block);
+    chain_blocks.insert(block);
+}
+
 void Peer::receive_block(Simulator* sim, Peer* sender, Block* block) {
-    // add prrof of work logic
+
+    set<Block*>::iterator chain_it;
+	map<Block*, vector<Block*>>::iterator free_it;
+
+    chain_it = chain_blocks.find(block);
+    free_it = free_block_parents.find(block);
+
+    // already received this block
+    if (chain_it != chain_blocks.end() or free_it != free_block_parents.end()) 
+        return;
+    
+    chain_it = chain_blocks.find(block->parent);
+
+    // block parent not in our blockchain
+    if (chain_it == chain_blocks.end()) {
+        free_block_parents[block->parent].emplace_back(block);
+        return;
+    }
+
+    // block parent present in our blockchain
+    // validate block
+    // add branch change logic
+
+
+    add_block(block);
+
+    if (free_it == free_block_parents.end())
+        return;
+    for (Block* child : free_it->second) {
+        // validate block here
+        add_block(child);
+    }
+    free_block_parents.erase(free_it);
 }

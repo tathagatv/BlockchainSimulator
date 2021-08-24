@@ -67,8 +67,8 @@ void BroadcastMinedBlock::run(Simulator* sim) {
 	Block* block = owner->next_mining_block;
 	assert(owner->blockchain->current_block->id == block->parent->id);
 	bool is_valid = owner->validate_block(block, owner->balances);
-	if (is_valid)
-		owner->blockchain->add(block);
+	if (is_valid) 
+		owner->add_block(block);
 
 	sim->log_time(cout);
 	cout << owner->get_name() << " mines and broadcasts block " << block->get_name() << '\n';

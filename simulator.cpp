@@ -58,12 +58,13 @@ void Simulator::form_random_network() {
         }
         current_node = neighbour_node;
     }
+    set<pair<int, int>>::iterator it;
     while (edges > 0) {
         int a = unif(rng64);
         int b = unif(rng64);
         while (a == b)
             b = unif(rng64);
-        auto it = edges_log.find(make_pair(a, b));
+        it = edges_log.find(make_pair(a, b));
         if (it == edges_log.end()) {
             Peer::add_edge(&peers[a], &peers[b]);
             edges--;
@@ -83,24 +84,26 @@ void Simulator::add_event(Event* event) {
     events.insert(event);
 }
 
+void Simulator::delete_event(Event* event) {
+    events.erase(event);
+    delete event;
+}
+
 void Simulator::run(ld end_time) {
     get_new_peers();
     form_random_network();
     init_events();
 
     while (!events.empty()) {
-        auto it = events.begin();
-        Event* event = *it;
-        events.erase(it);
+        current_event = *events.begin();
+        current_timestamp = current_event->timestamp;
 
-        current_timestamp = event->timestamp;
-
-        if (event->timestamp > end_time)
+        if (current_event->timestamp > end_time)
             break;
 
-        event->run(this);
+        current_event->run(this);
 
-        free(event);
+        delete_event(current_event);
     }
 }
 

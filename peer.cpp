@@ -235,7 +235,7 @@ void Peer::receive_block(Simulator* sim, Peer* sender, Block* block) {
     Event* ev = new ForwardBlock(0, this, sender, block);
     sim->add_event(ev);
 
-    if (parent_it == free_block_parents.end())
+	if (parent_it == free_block_parents.end())
         return;
 
     for (Transaction* txn : block->txns) {

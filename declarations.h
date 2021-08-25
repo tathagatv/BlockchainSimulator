@@ -49,26 +49,31 @@ public:
 	static int max_size;
 	static int counter;
 	// units = KB
-	int size, id, depth;
+	int size, id, depth, parent_id;
 	vector<Transaction*> txns;
 	vector<Block*> next;
 	Block* parent;
 	Peer* owner;
 
-	Block(Block* parent_, Peer* owner_);
+	Block(Peer* owner_);
 	void add(Transaction* txn);
 	string get_name();
+	Block* clone();
+	void set_parent(Block* b);
+	void reset_parent();
+	void set_id();
 };
 
 // ======================================================================= //
 class Blockchain {
 public:
+	static Block* global_genesis;
 	Block* genesis;
 	Block* current_block;
-	Blockchain(Peer* p);
+	Blockchain();
 
 	void add(Block* b);
-	static Block* backward(Block* b, bool collect_txn, vector<int>& balances, vector<Transaction*>& txns);
+	static Block* backward(Block* b, vector<int>& balances, vector<Transaction*>& txns);
 };
 
 // ======================================================================= //
@@ -182,17 +187,20 @@ public:
 	set<int> recv_pool; // all transaction ids received
 	set<Transaction*, TxnPtrComp> txn_pool; // transactions not yet mined
 
-	Blockchain* blockchain; 
+	Blockchain blockchain; 
 	BroadcastMinedBlock* next_mining_event;
 	Block* next_mining_block;
 
-	set<Block*> chain_blocks, free_blocks;
-	map<Block*, vector<Block*>> free_block_parents;
+	map<int, Block*> chain_blocks, free_blocks;
+	map<int, vector<Block*>> free_block_parents;
 
 	Peer();
 	static void add_edge(Peer* a, Peer* b);
 	string get_name();
 	void add_block(Block* block, bool update_balances);
+
+	void delete_invalid_free_blocks(Block* block);
+	void free_blocks_dfs(Block* block, vector<int>& cur_balances, set<Block*>& blocks_to_add, Block*& deepest_block);
 
 	void schedule_next_transaction(Simulator* sim);
 	Transaction* generate_transaction(Simulator* sim); // generate transaction for this peer

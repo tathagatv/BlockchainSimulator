@@ -64,7 +64,9 @@ BroadcastMinedBlock::BroadcastMinedBlock(ld timestamp, Peer* p) : Event(timestam
 
 void BroadcastMinedBlock::run(Simulator* sim, bool verbose) {
 	Block* block = owner->next_mining_block;
-	assert(owner->blockchain->current_block->id == block->parent->id);
+	block->set_id();
+	
+	assert(owner->blockchain.current_block->id == block->parent->id);
 	bool is_valid = owner->validate_block(block, owner->balances);
 	if (is_valid)
 		owner->add_block(block, true);

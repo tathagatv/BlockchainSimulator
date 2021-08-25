@@ -12,6 +12,8 @@ Simulator::Simulator(int n_, ld z_, ld Ttx_, ld Tk_, int edges_) {
     Transaction::counter = 0;
     Block::max_size = 1000;
     Block::counter = 0;
+    Blockchain::global_genesis = new Block(NULL);
+    Blockchain::global_genesis->set_parent(NULL);
     Peer::counter = 0;
     Peer::total_peers = n;
     Peer::Ttx = Ttx;

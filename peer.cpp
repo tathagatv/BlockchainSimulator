@@ -15,7 +15,7 @@ Peer::Peer() {
     block_mining_time = exponential_distribution<ld>(1.0 / Tk);
     unif_dist_peer = uniform_int_distribution<int>(0, total_peers - 1);
 
-    blockchain = new Blockchain(this);
+    blockchain = Blockchain();
 }
 
 string Peer::get_name() {
@@ -107,7 +107,8 @@ bool Peer::validate_block(Block* block, vector<int>& custom_balances) {
 }
 
 Block* Peer::generate_new_block(Simulator* sim) {
-    Block* block = new Block(blockchain->current_block, this);
+    Block* block = new Block(this);
+    block->set_parent(blockchain.current_block);
     for (Transaction* txn : txn_pool) {
         if (block->size + TRANSACTION_SIZE > Block::max_size) 
             break;
@@ -128,15 +129,16 @@ void Peer::forward_block(Simulator* sim, Peer* source, Block* block) {
     // send block to peers
     for (Link& link : adj) {
         if (link.peer->id == source->id) continue;  // source already has the txn, loop-less forwarding
-        ld delay = link.get_delay(block->size);
-        Event* ev = new ReceiveBlock(delay, this, link.peer, block);
+        Block* new_block = block->clone();
+        ld delay = link.get_delay(new_block->size);
+        Event* ev = new ReceiveBlock(delay, this, link.peer, new_block);
         sim->add_event(ev);
     }
 }
 
 void Peer::add_block(Block* block, bool update_balances) {
-    blockchain->add(block);
-    chain_blocks.insert(block);
+    blockchain.add(block);
+    chain_blocks[block->id] = block;
     if (update_balances) {
         set<Transaction*>::iterator it;
         for (Transaction* txn : block->txns) {
@@ -147,107 +149,156 @@ void Peer::add_block(Block* block, bool update_balances) {
                 txn_pool.erase(it);
         }
         balances[block->owner->id] += MINING_FEE;
-        blockchain->current_block = block;
+        blockchain.current_block = block;
     }
 }
 
-void Peer::receive_block(Simulator* sim, Peer* sender, Block* block) {
-    set<Block*>::iterator chain_it, free_it;
+void Peer::delete_invalid_free_blocks(Block* block) {
+    map<int, vector<Block*>>::iterator it;
+    it = free_block_parents.find(block->id);
 
-    chain_it = chain_blocks.find(block);
-    free_it = free_blocks.find(block);
+    delete block;
+
+    if (it == free_block_parents.end()) 
+        return;
+
+    // recursive call to delete child blocks
+    for (Block* child : it->second) {
+        free_blocks.erase(child->id);
+        delete_invalid_free_blocks(child);
+    }
+    free_block_parents.erase(it);
+}
+
+void Peer::free_blocks_dfs(Block* block, vector<int>& cur_balances, set<Block*>& blocks_to_add, Block*& deepest_block) {
+    if (!validate_block(block, cur_balances)) {
+        delete_invalid_free_blocks(block);
+        return;
+    }
+
+    blocks_to_add.insert(block);
+    if (deepest_block == NULL || block->depth > deepest_block->depth)
+        deepest_block = block;
+
+    map<int, vector<Block*>>::iterator it;
+    it = free_block_parents.find(block->id);
+    if (it == free_block_parents.end()) 
+        return;
+
+    // update balance array
+    for (Transaction* txn : block->txns) {
+        cur_balances[txn->sender->id] -= txn->amount;
+        cur_balances[txn->receiver->id] += txn->amount;
+    }
+    cur_balances[block->owner->id] += MINING_FEE; 
+
+    // recursive call to chld blocks
+    for (Block* child : it->second) {
+        assert(child->parent == NULL);
+        child->set_parent(block);
+        free_blocks.erase(child->id);
+        free_blocks_dfs(child, cur_balances, blocks_to_add, deepest_block);
+    }
+    free_block_parents.erase(it);
+
+    // reset balance array
+    for (Transaction* txn : block->txns) {
+        cur_balances[txn->sender->id] += txn->amount;
+        cur_balances[txn->receiver->id] -= txn->amount;
+    }
+    cur_balances[block->owner->id] -= MINING_FEE;
+}
+
+void Peer::receive_block(Simulator* sim, Peer* sender, Block* block) {
+    map<int, Block*>::iterator chain_it, free_it;
+
+    chain_it = chain_blocks.find(block->id);
+    free_it = free_blocks.find(block->id);
 
     // already received this block
     if (chain_it != chain_blocks.end() || free_it != free_blocks.end()) 
         return;
+
+    // forward every received block regardless of validity
+    Event* ev = new ForwardBlock(0, this, sender, block);
+    sim->add_event(ev);
     
-    chain_it = chain_blocks.find(block->parent);
+    chain_it = chain_blocks.find(block->parent_id);
 
     // block parent not in our blockchain
     if (chain_it == chain_blocks.end()) {
-        // forward the block in this case?
-        Event* ev = new ForwardBlock(0, this, sender, block);
-        sim->add_event(ev);
-
-        free_blocks.insert(block);
-        free_block_parents[block->parent].emplace_back(block);
+        block->reset_parent();
+        free_blocks[block->id] = block;
+        free_block_parents[block->parent_id].emplace_back(block);
         return;
     }
 
-    Block* current_block = blockchain->current_block;
-    Block* branch_block = block->parent;
+    block->set_parent(chain_it->second);
 
-    // if we will stop mining and change branch
-    bool branch_change = block->depth > current_block->depth;
+    Block* current_block = blockchain.current_block;
+    Block* branch_block = block->parent;
 
     vector<int> current_balance_change(total_peers, 0);
     vector<Transaction*> txns_to_add;
     while (current_block->depth > branch_block->depth)
-        current_block = Blockchain::backward(current_block, branch_change, current_balance_change, txns_to_add);
+        current_block = Blockchain::backward(current_block, current_balance_change, txns_to_add);
     
     vector<int> branch_balance_change(total_peers, 0);
     vector<Transaction*> txns_to_remove;
     while (branch_block->depth > current_block->depth)
-        branch_block = Blockchain::backward(branch_block, branch_change, branch_balance_change, txns_to_remove);
+        branch_block = Blockchain::backward(branch_block, branch_balance_change, txns_to_remove);
 
     while (branch_block->id != current_block->id) {
-        current_block = Blockchain::backward(current_block, branch_change, current_balance_change, txns_to_add);
-        branch_block = Blockchain::backward(branch_block, branch_change, branch_balance_change, txns_to_remove);
+        current_block = Blockchain::backward(current_block, current_balance_change, txns_to_add);
+        branch_block = Blockchain::backward(branch_block, branch_balance_change, txns_to_remove);
     }
 
     // current_balance_change = balances just before block insertion point
     for (int i = 0; i < total_peers; i++)
         current_balance_change[i] += balances[i] - branch_balance_change[i];
 
-    // validate block
-    if (!validate_block(block, current_balance_change)) 
+    set<Block*> blocks_to_add;
+    Block* deepest_block = NULL;
+
+    free_blocks_dfs(block, current_balance_change, blocks_to_add, deepest_block);
+
+    // block is invalid
+    if (deepest_block == NULL) 
         return;
-
-    map<Block*, vector<Block*>>::iterator parent_it;
-    parent_it = free_block_parents.find(block);
-
-    bool another_branch_change = (parent_it != free_block_parents.end()) && (block->depth + 1 > blockchain->current_block->depth);
 
     // now block gets added to blockchain
     // balances will be updated only if branch was changed
-    if (another_branch_change || branch_change) {
+    if (deepest_block->depth > blockchain.current_block->depth) {
+
+        // change peer state to just before block insertion
         balances = current_balance_change;
         for (Transaction* txn : txns_to_add)
             txn_pool.insert(txn);
         for (Transaction* txn : txns_to_remove)
             txn_pool.erase(txn);
-        
-        add_block(block, true);
 
-        if (another_branch_change) {
-            Block* child_block = parent_it->second.back();
-            parent_it->second.pop_back();
-            add_block(child_block, true);
-            free_blocks.erase(child_block);
+        stack<Block*> order;
+        order.push(deepest_block);
+
+        while (order.top() != block)
+            order.push(order.top()->parent);
+
+        while (!order.empty()) {
+            Block* b = order.top();
+            order.pop();
+            add_block(b, true);
+            blocks_to_add.erase(b);
         }
 
+        for (Block* b : blocks_to_add)
+            add_block(b, false);
+
         sim->delete_event(next_mining_event);
+        delete next_mining_block;
         schedule_next_block(sim);
+
     } else {
-        add_block(block, false);
+        for (Block* b : blocks_to_add)
+            add_block(b, false);
     }
-    
-    Event* ev = new ForwardBlock(0, this, sender, block);
-    sim->add_event(ev);
-
-	if (parent_it == free_block_parents.end())
-        return;
-
-    for (Transaction* txn : block->txns) {
-        current_balance_change[txn->sender->id] -= txn->amount;
-        current_balance_change[txn->receiver->id] += txn->amount;
-    }
-
-    for (Block* child : parent_it->second) {
-        // validate block here
-        if (validate_block(child, current_balance_change)) 
-            add_block(child, false);
-        free_blocks.erase(child);
-    }
-    free_block_parents.erase(parent_it);
 }

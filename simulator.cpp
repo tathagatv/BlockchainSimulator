@@ -116,6 +116,10 @@ void Simulator::run(ld end_time_, bool verbose_, int max_txns_, int max_blocks_)
 
         delete_event(current_event);
     }
+
+    for (int i = 0; i < n; i++) {
+        peers[i].export_blockchain();
+    }
 }
 
 void Simulator::log_time(ostream& os) {

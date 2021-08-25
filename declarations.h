@@ -214,6 +214,9 @@ public:
 
 	void forward_block(Simulator* sim, Peer* source, Block* block); 
 	void receive_block(Simulator* sim, Peer* sender, Block* block);
+
+	void traverse_blockchain(Block* b, ostream& os);
+	void export_blockchain();
 };
 
 // ====================================================================== //

@@ -302,3 +302,17 @@ void Peer::receive_block(Simulator* sim, Peer* sender, Block* block) {
             add_block(b, false);
     }
 }
+
+void Peer::traverse_blockchain(Block* b, ostream& os) {
+    for (Block* c : b->next) {
+        os << (b->id + 1) << ' ' << (c->id + 1) << '\n';
+        traverse_blockchain(c, os);
+    }
+}
+
+void Peer::export_blockchain() {
+    string filename = "blockchain/peer" + to_string(id) + "_blockchain.txt";
+    ofstream outfile(filename);
+    traverse_blockchain(blockchain.genesis, outfile);
+    outfile.close();
+}

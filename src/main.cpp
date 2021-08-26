@@ -69,6 +69,18 @@ int main(int argc, char *argv[]) {
 	.implicit_value(true)
 	.help("Print output log");
 
+	argparser.add_argument("--invalid_txn_prob", "-it")
+	.default_value((ld)0.05)
+	.required()
+	.help("Probability of generating an invalid transaction")
+	.action([](const string& value) { return stold(value); });
+
+	argparser.add_argument("--invalid_block_prob", "-ib")
+	.default_value((ld)0.05)
+	.required()
+	.help("Probability of generating an invalid block")
+	.action([](const string& value) { return stold(value); });
+
 	argparser.parse_args(argc, argv);
 
 	ld z = argparser.get<ld>("-z");
@@ -81,12 +93,14 @@ int main(int argc, char *argv[]) {
 	int max_txns = argparser.get<int>("-txn");
 	int max_blocks = argparser.get<int>("-blk");
 	bool verbose = argparser.get<bool>("-v");
+	ld invalid_txn_prob = argparser.get<ld>("-it");
+	ld invalid_block_prob = argparser.get<ld>("-ib");
 
 	rng.seed(seed);
 	rng64.seed(seed);
 
-	Simulator simulator(n, z, Ttx, Tk, edges);
-	simulator.run(t, verbose, max_txns, max_blocks);
+	Simulator simulator(n, z, Ttx, Tk, edges, verbose, invalid_txn_prob, invalid_block_prob);
+	simulator.run(t, max_txns, max_blocks);
 
 	return 0;
 }

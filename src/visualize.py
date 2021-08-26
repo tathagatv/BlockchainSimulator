@@ -8,6 +8,7 @@ import pydot
 from networkx.drawing.nx_pydot import graphviz_layout
 import glob
 from tqdm import tqdm
+from os.path import dirname, abspath
 
 def draw_blockchain(G, filename):
     pos = graphviz_layout(G, prog="dot")
@@ -20,19 +21,15 @@ def draw_blockchain(G, filename):
     plt.savefig(filename, bbox_inches='tight')
     plt.close()
 
-# with open('blockchain_edgelist.txt', 'r') as fp:
-#     G = nx.read_edgelist(fp, create_using=nx.DiGraph)
-
-# draw_blockchain(G, 'blockchain_image.png')
-
-base = 'blockchain'
+base = os.path.join(dirname(dirname(abspath(__file__))), 'output')
 graphs = []
 
-for file in glob.glob(os.path.join(base, "*.txt")):
+for file in glob.glob(os.path.join(base, 'blockchain_edgelist*.txt')):
+    print(file)
     with open(file, 'r') as fp:
         G = nx.read_edgelist(fp, create_using=nx.DiGraph)
     graphs.append(G)
 
-
 for i in tqdm(range(len(graphs[:1]))):
-    draw_blockchain(graphs[i], f'blockchain/blockchain_image{i}.png')
+    file = os.path.join(base, f'blockchain_image{i}.png')
+    draw_blockchain(graphs[i], file)

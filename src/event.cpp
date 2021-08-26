@@ -11,7 +11,7 @@ bool Event::operator<(const Event& other) {
     return timestamp < other.timestamp;
 }
 
-void Event::run(Simulator* sim, bool verbose) {
+void Event::run(Simulator* sim) {
 	assert(false);
 }
 
@@ -21,11 +21,10 @@ GenerateTransaction::GenerateTransaction(ld timestamp_, Peer* p) : Event(timesta
 	is_generate_type_event = true;
 }
 
-void GenerateTransaction::run(Simulator* sim, bool verbose) {
+void GenerateTransaction::run(Simulator* sim) {
     Transaction* txn = payed_by->generate_transaction(sim);
-	if (verbose && txn != NULL) {
-		sim->log_time(cout);
-		cout << payed_by->get_name() << " generates and emits transaction " << txn->get_name() << '\n';
+	if (txn != NULL) {
+		// sim->log(cout, payed_by->get_name() + " generates and emits transaction " + txn->get_name());
 	}
 }
 
@@ -36,11 +35,9 @@ ForwardTransaction::ForwardTransaction(ld timestamp_, Peer* peer_, Peer* source_
     txn = txn_;
 }
 
-void ForwardTransaction::run(Simulator* sim, bool verbose) {
-	if (verbose && peer->id != source->id) {
-		sim->log_time(cout);
-		cout << peer->get_name() << " forwards transaction " << txn->get_name() << " received from " << source->get_name() << '\n';
-    }
+void ForwardTransaction::run(Simulator* sim) {
+	// if (peer->id != source->id)
+		// sim->log(cout, peer->get_name() + " forwards transaction " + txn->get_name() + " received from " + source->get_name());
 	peer->forward_transaction(sim, source, txn);
 }
 
@@ -51,11 +48,8 @@ ReceiveTransaction::ReceiveTransaction(ld timestamp_, Peer* sender_, Peer* recei
     txn = txn_;
 }
 
-void ReceiveTransaction::run(Simulator* sim, bool verbose) {
-	if (verbose) {
-		sim->log_time(cout);
-		cout << receiver->get_name() << " receives transaction " << txn->get_name() << " from " << sender->get_name() << '\n';
-	}
+void ReceiveTransaction::run(Simulator* sim) {
+	// sim->log(cout, receiver->get_name() + " receives transaction " + txn->get_name() + " from " + sender->get_name());
     receiver->receive_transaction(sim, sender, txn);
 }
 
@@ -65,20 +59,22 @@ BroadcastMinedBlock::BroadcastMinedBlock(ld timestamp, Peer* p) : Event(timestam
 	is_generate_type_event = true;
 }
 
-void BroadcastMinedBlock::run(Simulator* sim, bool verbose) {
+void BroadcastMinedBlock::run(Simulator* sim) {
 	Block* block = owner->next_mining_block;
 	block->set_id();
 	
 	assert(owner->blockchain.current_block->id == block->parent->id);
 	bool is_valid = owner->validate_block(block, owner->balances);
-	if (is_valid)
-		owner->add_block(block, true);
 
-	if (true) {
-		sim->log_time(cout);
-		cout << owner->get_name() << " mines and broadcasts block " << block->get_name() << '\n';
+	// do not add invalid block, only transmit it to other peers
+	string validity = "INVALID";
+	if (is_valid) {
+		owner->add_block(block, true);
+		validity = "VALID";
 	}
-	Event* ev = new ForwardBlock(0, owner, owner, block);
+	sim->log(cout, owner->get_name() + " mines and broadcasts " + validity + " block " + block->get_name());
+
+	Event* ev = new ForwardBlock(0, owner, owner, block->clone());
 	sim->add_event(ev);
 
 	owner->schedule_next_block(sim);
@@ -91,11 +87,9 @@ ForwardBlock::ForwardBlock(ld timestamp_, Peer* peer_, Peer* source_, Block* blo
     block = block_;
 }
 
-void ForwardBlock::run(Simulator* sim, bool verbose) {
-	if (verbose && peer->id != source->id) {
-		sim->log_time(cout);
-		cout << peer->get_name() << " forwards block " << block->get_name() << " received from " << source->get_name() << '\n';
-	}
+void ForwardBlock::run(Simulator* sim) {
+	// if (peer->id != source->id)
+		// sim->log(cout, peer->get_name() + " forwards block " + block->get_name() + " received from " + source->get_name());
 	peer->forward_block(sim, source, block);
 }
 
@@ -106,10 +100,7 @@ ReceiveBlock::ReceiveBlock(ld timestamp_, Peer* sender_, Peer* receiver_, Block*
     block = block_;
 }
 
-void ReceiveBlock::run(Simulator* sim, bool verbose) {
-	if (verbose) {
-		sim->log_time(cout);
-		cout << receiver->get_name() << " receives block " << block->get_name() << " from " << sender->get_name() << '\n';
-	}
+void ReceiveBlock::run(Simulator* sim) {
+	// sim->log(cout, receiver->get_name() + " receives block " + block->get_name() + " from " + sender->get_name());
     receiver->receive_block(sim, sender, block);
 }

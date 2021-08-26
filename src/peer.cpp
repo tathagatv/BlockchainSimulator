@@ -14,6 +14,7 @@ Peer::Peer() {
     txn_interarrival_time = exponential_distribution<ld>(1.0 / Ttx);
     block_mining_time = exponential_distribution<ld>(1.0 / Tk);
     unif_dist_peer = uniform_int_distribution<int>(0, total_peers - 1);
+    unif_rand_real = uniform_real_distribution<ld>(0, 1);
 
     blockchain = Blockchain();
     chain_blocks[blockchain.current_block->id] = blockchain.current_block;
@@ -32,6 +33,7 @@ void Peer::add_edge(Peer *a, Peer *b) {
     (b->adj).emplace_back(ba);
 }
 
+// ================== TRANSACTION =============================
 void Peer::schedule_next_transaction(Simulator* sim) {
     ld interArrivalTime = txn_interarrival_time(rng64);
     Event* ev = new GenerateTransaction(interArrivalTime, this);
@@ -39,10 +41,19 @@ void Peer::schedule_next_transaction(Simulator* sim) {
 }
 
 Transaction* Peer::generate_transaction(Simulator* sim) {
-    if (balances[id] > 0) {
-        uniform_int_distribution unif_coins_dist(1, balances[id]);
-        int coins = unif_coins_dist(rng64);
+    bool generate_invalid = (unif_rand_real(rng64) < sim->invalid_txn_prob);
+    int coins = -1, cur_balance = balances[id];
+    if (generate_invalid) {
+        uniform_int_distribution unif_coins_dist(1, 100);
+        coins = cur_balance + unif_coins_dist(rng64);
+    } else if (cur_balance == 0) {
+        coins = 0;
+    } else {
+        uniform_int_distribution unif_coins_dist(1, cur_balance);
+        coins = unif_coins_dist(rng64);
+    }
 
+    if (coins > 0) {
         // todo: check if uniform distribution is correct for sampling receiver & no of coins
         int receiver = unif_dist_peer(rng64);
         while (receiver == id)
@@ -92,12 +103,12 @@ void Peer::receive_transaction(Simulator* sim, Peer* sender, Transaction *txn) {
     sim->add_event(ev);
 }
 
-// ================== BLOCK =============================
 bool Peer::validate_txn(Transaction* txn, vector<int>& custom_balances) {
     int balance = custom_balances[txn->sender->id];
     return (balance >= txn->amount);
 }
 
+// ================== BLOCK =============================
 bool Peer::validate_block(Block* block, vector<int>& custom_balances) {
     if (block->size > Block::max_size)
         return false;
@@ -108,8 +119,26 @@ bool Peer::validate_block(Block* block, vector<int>& custom_balances) {
 }
 
 Block* Peer::generate_new_block(Simulator* sim) {
+    bool generate_invalid = (unif_rand_real(rng64) < sim->invalid_block_prob);
     Block* block = new Block(this);
     block->set_parent(blockchain.current_block);
+    bool is_invalid = false;
+    if (generate_invalid) {
+        for (Transaction* txn : txn_pool) {
+            if (block->size + TRANSACTION_SIZE > Block::max_size) {
+                if (!is_invalid) {
+                    block->add(txn);
+                    is_invalid = true;
+                }
+                break;
+            }
+            if (!validate_txn(txn, balances))
+                is_invalid = true;
+            block->add(txn);
+        }
+        if (is_invalid)
+            return block;
+    } 
     for (Transaction* txn : txn_pool) {
         if (block->size + TRANSACTION_SIZE > Block::max_size) 
             break;
@@ -128,6 +157,7 @@ void Peer::schedule_next_block(Simulator* sim) {
 
 void Peer::forward_block(Simulator* sim, Peer* source, Block* block) {
     // send block to peers
+    // this block is a copy, memory needs to be freed
     for (Link& link : adj) {
         if (link.peer->id == source->id) continue;  // source already has the txn, loop-less forwarding
         Block* new_block = block->clone();
@@ -135,6 +165,7 @@ void Peer::forward_block(Simulator* sim, Peer* source, Block* block) {
         Event* ev = new ReceiveBlock(delay, this, link.peer, new_block);
         sim->add_event(ev);
     }
+    delete block;
 }
 
 void Peer::add_block(Block* block, bool update_balances) {
@@ -212,16 +243,19 @@ void Peer::free_blocks_dfs(Block* block, vector<int>& cur_balances, custom_unord
 
 void Peer::receive_block(Simulator* sim, Peer* sender, Block* block) {
     custom_map<int, Block*>::iterator chain_it, free_it;
+    custom_unordered_set<int>::iterator reject_it;
 
     chain_it = chain_blocks.find(block->id);
     free_it = free_blocks.find(block->id);
+    reject_it = rejected_blocks.find(block->id);
 
     // already received this block
-    if (chain_it != chain_blocks.end() || free_it != free_blocks.end()) 
+    if (chain_it != chain_blocks.end() || free_it != free_blocks.end() || reject_it != rejected_blocks.end()) 
         return;
 
     // forward every received block regardless of validity
-    Event* ev = new ForwardBlock(0, this, sender, block);
+    Block* block_copy = block->clone();
+    Event* ev = new ForwardBlock(0, this, sender, block_copy);
     sim->add_event(ev);
     
     chain_it = chain_blocks.find(block->parent_id);
@@ -264,8 +298,11 @@ void Peer::receive_block(Simulator* sim, Peer* sender, Block* block) {
     free_blocks_dfs(block, current_balance_change, blocks_to_add, deepest_block);
 
     // block is invalid
-    if (deepest_block == NULL) 
+    if (deepest_block == NULL) {
+        sim->log(cout, get_name() + " REJECTS block " + block_copy->get_name());
+        rejected_blocks.insert(block_copy->id);
         return;
+    }
 
     // now block gets added to blockchain
     // balances will be updated only if branch was changed
@@ -317,7 +354,7 @@ void Peer::traverse_blockchain(Block* b, ostream& os) {
 }
 
 void Peer::export_blockchain() {
-    string filename = "blockchain/blockchain_edgelist" + to_string(id) + ".txt";
+    string filename = "output/blockchain_edgelist" + to_string(id) + ".txt";
     ofstream outfile(filename);
     traverse_blockchain(blockchain.genesis, outfile);
     outfile.close();

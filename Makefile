@@ -1,16 +1,26 @@
 CC=g++
 CFLAGS=-g -Wall -std=c++17 -O2
 
-FILES=block blockchain event link main peer simulator transaction
-H_FILES=headers.h declarations.h trace.h
-O_FILES=$(FILES:=.o)
 TARGET=blockchain_simulator
+BUILD=build
+SRC=src
 
-%.o: %.cpp $(H_FILES)
-	$(CC) -c $(CFLAGS) $< -o $@
+SOURCES := $(wildcard $(SRC)/*.cpp)
+HEADERS := $(wildcard $(SRC)/*.h)
+OBJECTS := $(patsubst $(SRC)/%.cpp, $(BUILD)/%.o, $(SOURCES))
 
-$(TARGET): $(O_FILES)
-	$(CC) $(CFLAGS) -o $(TARGET) $(O_FILES)
+$(TARGET): $(OBJECTS)
+	$(CC) $(CFLAGS) $^ -o $@
+
+$(OBJECTS): | $(BUILD)
+
+$(BUILD):
+	mkdir -p $(BUILD)
+
+$(BUILD)/%.o: $(SRC)/%.cpp
+	$(CC) $(CFLAGS) -I$(SRC) -c $< -o $@
+
+$(SRC)/%.cpp: $(HEADERS)
 
 clean:
-	rm -f $(TARGET) *.o
+	rm -rf $(TARGET) $(BUILD)

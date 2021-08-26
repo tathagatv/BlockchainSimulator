@@ -93,7 +93,7 @@ public:
 	ld timestamp;
 	bool is_generate_type_event;
 
-	virtual void run(Simulator* sim, bool verbose);
+	virtual void run(Simulator* sim);
 	bool operator<(const Event& other);
 	Event(ld timestamp_);
 	virtual ~Event() {}
@@ -107,7 +107,7 @@ public:
 	Transaction* txn; // transaction
 	
 	ForwardTransaction(ld timestamp, Peer* peer_, Peer* source_, Transaction* txn);
-	void run(Simulator* sim, bool verbose);
+	void run(Simulator* sim);
 };
 
 // ======================================================================= //
@@ -117,7 +117,7 @@ public:
 	Peer* receiver; // peer who receives the transaction
 	Transaction* txn; // transaction
 	
-	void run(Simulator* sim, bool verbose);
+	void run(Simulator* sim);
 	ReceiveTransaction(ld timestamp, Peer* sender_, Peer* receiver_, Transaction* txn);
 };
 
@@ -126,7 +126,7 @@ class GenerateTransaction : public Event {
 public:
 	Peer* payed_by;
 
-	void run(Simulator* sim, bool verbose);
+	void run(Simulator* sim);
 	GenerateTransaction(ld timestamp, Peer* p);
 };
 
@@ -137,7 +137,7 @@ public:
 	Peer* receiver; // peer who receives the block
 	Block* block; // block
 
-	void run(Simulator* sim, bool verbose);
+	void run(Simulator* sim);
 	ReceiveBlock(ld timestamp, Peer* sender_, Peer* receiver_, Block* block);
 };
 
@@ -149,7 +149,7 @@ public:
 	Block* block; // block
 	
 	ForwardBlock(ld timestamp, Peer* peer_, Peer* source_, Block* block);
-	void run(Simulator* sim, bool verbose);
+	void run(Simulator* sim);
 };
 
 // ======================================================================= //
@@ -158,7 +158,7 @@ public:
 	Peer* owner;
 
 	BroadcastMinedBlock(ld timestamp, Peer* p);
-	void run(Simulator* sim, bool verbose);
+	void run(Simulator* sim);
 };
 
 // ====================================================================== //
@@ -180,6 +180,7 @@ public:
 
 	exponential_distribution<ld> txn_interarrival_time, block_mining_time;
 	uniform_int_distribution<int> unif_dist_peer;
+	uniform_real_distribution<ld> unif_rand_real;
 	int id;
 	bool is_fast;
 	vector<int> balances;
@@ -192,6 +193,7 @@ public:
 	BroadcastMinedBlock* next_mining_event;
 	Block* next_mining_block;
 
+	custom_unordered_set<int> rejected_blocks;
 	custom_map<int, Block*> chain_blocks, free_blocks;
 	custom_map<int, vector<Block*>> free_block_parents;
 
@@ -235,20 +237,22 @@ class Simulator {
 public:
 	int n, slow_peers, edges;
 	ld Tk, Ttx;
+	ld invalid_txn_prob, invalid_block_prob;
 	ld current_timestamp;
 	Event* current_event;
 	set<Event*, EventPtrComp> events;
 	vector<Peer> peers;
+	bool verbose;
 
-	Simulator(int n_, ld z_, ld Ttx_, ld Tk_, int edges_);	
+	Simulator(int n_, ld z_, ld Ttx_, ld Tk_, int edges_, bool verbose_, ld invalid_txn_prob_, ld invalid_block_prob_);	
 	void get_new_peers();
 	void form_random_network();
 	void init_events();
 	void add_event(Event* event);
 	void delete_event(Event* event);
-	void run(ld end_time, bool verbose_, int max_txns_, int max_blocks_);
-	void log_time(ostream& os);
-	void complete_non_generate_events(bool verbose);
+	void run(ld end_time, int max_txns_, int max_blocks_);
+	void log(ostream& os, const string& s);
+	void complete_non_generate_events();
 };
 
 #endif

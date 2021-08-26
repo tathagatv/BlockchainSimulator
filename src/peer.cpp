@@ -188,7 +188,10 @@ void Peer::add_block(Block* block, bool update_balances) {
 void Peer::delete_invalid_free_blocks(Block* block) {
     custom_map<int, vector<Block*>>::iterator it;
     it = free_block_parents.find(block->id);
-
+    
+    // add block to rejected_blocks
+    rejected_blocks.insert(block->id);
+    
     delete block;
 
     if (it == free_block_parents.end()) 
@@ -300,7 +303,6 @@ void Peer::receive_block(Simulator* sim, Peer* sender, Block* block) {
     // block is invalid
     if (deepest_block == NULL) {
         sim->log(cout, get_name() + " REJECTS block " + block_copy->get_name());
-        rejected_blocks.insert(block_copy->id);
         return;
     }
 

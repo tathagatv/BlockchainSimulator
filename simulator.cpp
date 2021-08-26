@@ -86,7 +86,11 @@ void Simulator::add_event(Event* event) {
 }
 
 void Simulator::delete_event(Event* event) {
-    events.erase(event);
+    assert(event != NULL);
+    set<Event*>::iterator it;
+    it = events.find(event);
+    assert(it != events.end());
+    events.erase(it);
     delete event;
 }
 
@@ -98,8 +102,7 @@ void Simulator::run(ld end_time_, bool verbose_, int max_txns_, int max_blocks_)
     bool verbose = verbose_;
     int max_txns = max_txns_ <= 0 ? INT_MAX : max_txns_;
     int max_blocks = max_blocks_ <= 0 ? INT_MAX : max_blocks_;
-    ld end_time = end_time_ <= 0 ? 100 : end_time_;
-
+    ld end_time = end_time_ <= 0 ? DBL_MAX : end_time_;
 
     while (!events.empty()) {
         current_event = *events.begin();
@@ -117,9 +120,35 @@ void Simulator::run(ld end_time_, bool verbose_, int max_txns_, int max_blocks_)
         delete_event(current_event);
     }
 
-    for (int i = 0; i < n; i++) {
-        peers[i].export_blockchain();
+    complete_non_generate_events(verbose);
+
+    cout << "Total Transactions: " << (Transaction::counter) << '\n';
+    cout << "Total Blocks: " << (Block::counter) << '\n';
+
+}
+
+void Simulator::complete_non_generate_events(bool verbose) {
+    for (Peer& p : peers) {
+        p.next_mining_event = NULL;
+        p.next_mining_block = NULL;
     }
+    
+    if (verbose)
+        cout << "\nSIMULATION HAS ENDED AT THIS POINT\n\n";
+
+    while (!events.empty()) {
+        current_event = *events.begin();
+        current_timestamp = current_event->timestamp;
+
+        if (!current_event->is_generate_type_event) 
+            current_event->run(this, verbose);
+
+        delete_event(current_event);
+    }
+
+    for (Peer& p : peers)
+        p.export_blockchain();
+
 }
 
 void Simulator::log_time(ostream& os) {

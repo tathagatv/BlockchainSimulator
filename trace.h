@@ -1,19 +1,7 @@
-#include <ext/pb_ds/assoc_container.hpp>
-#include <ext/pb_ds/tree_policy.hpp>
-#include <ext/rope>
-using namespace __gnu_pbds;
-using namespace __gnu_cxx;
-template <class T>
-using ordered_set = tree<T, null_type, less<T>, rb_tree_tag, tree_order_statistics_node_update>;
+using namespace std;
 
 template <class T>
 ostream& operator<<(ostream& os, vector<T> V) {
-    os << "[ ";
-    for (auto v : V) os << v << " ";
-    return os << "]";
-}
-template <class T>
-ostream& operator<<(ostream& os, list<T> V) {
     os << "[ ";
     for (auto v : V) os << v << " ";
     return os << "]";
@@ -31,39 +19,6 @@ ostream& operator<<(ostream& os, stack<T> S) {
     return os << "]";
 }
 template <class T>
-ostream& operator<<(ostream& os, priority_queue<T> S) {
-    vector<T> V;
-    while (!S.empty()) {
-        V.push_back(S.top());
-        S.pop();
-    }
-    os << "[ ";
-    for (auto v : V) os << v << " ";
-    return os << "]";
-}
-template <class T>
-ostream& operator<<(ostream& os, queue<T> S) {
-    vector<T> V;
-    while (!S.empty()) {
-        V.push_back(S.front());
-        S.pop();
-    }
-    os << "[ ";
-    for (auto v : V) os << v << " ";
-    return os << "]";
-}
-template <class T>
-ostream& operator<<(ostream& os, deque<T> S) {
-    vector<T> V;
-    while (!S.empty()) {
-        V.push_back(S.front());
-        S.pop_front();
-    }
-    os << "[ ";
-    for (auto v : V) os << v << " ";
-    return os << "]";
-}
-template <class T>
 ostream& operator<<(ostream& os, set<T> S) {
     os << "{ ";
     for (auto s : S) os << s << " ";
@@ -75,13 +30,7 @@ ostream& operator<<(ostream& os, multiset<T> S) {
     for (auto s : S) os << s << " ";
     return os << "}";
 }
-template <class T>
-ostream& operator<<(ostream& os, ordered_set<T> S) {
-    os << "{ ";
-    for (auto it = S.begin(); it != S.end(); it++)
-        os << (*it) << " ";
-    return os << "}";
-}
+
 template <class L, class R>
 ostream& operator<<(ostream& os, pair<L, R> P) {
     return os << "(" << P.first << "," << P.second << ")";

@@ -11,37 +11,37 @@ int main(int argc, char *argv[]) {
 	argparse::ArgumentParser argparser("./blockchain_simulator", "1.0");
 
 	argparser.add_argument("--peers", "-n")
-	.default_value((int)10)
+	.default_value((int)40)
 	.required()
 	.help("Number of peers in the network")
 	.action([](const string& value) { return stoi(value); });
 
 	argparser.add_argument("--edges", "-e")
-	.default_value((int)20)
+	.default_value((int)390)
 	.required()
 	.help("Number of edges in the peer network")
 	.action([](const string& value) { return stoi(value); });
 
 	argparser.add_argument("--slowpeers", "-z")
-	.default_value((ld)0.1)
+	.default_value((ld)0.4)
 	.required()
 	.help("Fraction of slow peers in the network")
 	.action([](const string& value) { return stold(value); });
 
 	argparser.add_argument("--time_limit", "-t")
-	.default_value((ld)100.0)
+	.default_value((ld)DBL_MAX)
 	.required()
 	.help("Run the simulation upto a time limit (in seconds)")
 	.action([](const string& value) { return stold(value); });
 
 	argparser.add_argument("--txn_interarrival", "-Ttx")
-	.default_value((ld)2.0)
+	.default_value((ld)40)
 	.required()
 	.help("Mean of exponential distribution of interarrival time betweek transactions")
 	.action([](const string& value) { return stold(value); });
 
 	argparser.add_argument("--mining_time", "-Tk")
-	.default_value((ld)10.0)
+	.default_value((ld)24000.0)
 	.required()
 	.help("Mean of exponential distribution of time to mine a block")
 	.action([](const string& value) { return stold(value); });
@@ -59,7 +59,7 @@ int main(int argc, char *argv[]) {
 	.action([](const string& value) { return stoi(value); });
 
 	argparser.add_argument("--max_blocks", "-blk")
-	.default_value((int)0)
+	.default_value((int)200)
 	.required()
 	.help("Run simulation till max blocks are generated, 0 indicates infinity")
 	.action([](const string& value) { return stoi(value); });

@@ -6,7 +6,7 @@ using namespace std;
 
 extern mt19937 rng;
 extern mt19937_64 rng64;
-#define random_shuffle(v) shuffle((v).begin(), (v).end(), rng);
+#define random_shuffle(v) shuffle((v).begin(), (v).end(), rng64);
 // Use mt19937_64 for 64 bit random numbers.
 
 // constants
@@ -91,6 +91,7 @@ public:
 class Event {
 public:
 	ld timestamp;
+	bool is_generate_type_event;
 
 	virtual void run(Simulator* sim, bool verbose);
 	bool operator<(const Event& other);
@@ -184,15 +185,15 @@ public:
 	vector<int> balances;
 	vector<Link> adj;
 	
-	set<int> recv_pool; // all transaction ids received
+	custom_unordered_set<int> recv_pool; // all transaction ids received
 	set<Transaction*, TxnPtrComp> txn_pool; // transactions not yet mined
 
 	Blockchain blockchain; 
 	BroadcastMinedBlock* next_mining_event;
 	Block* next_mining_block;
 
-	map<int, Block*> chain_blocks, free_blocks;
-	map<int, vector<Block*>> free_block_parents;
+	custom_map<int, Block*> chain_blocks, free_blocks;
+	custom_map<int, vector<Block*>> free_block_parents;
 
 	Peer();
 	static void add_edge(Peer* a, Peer* b);
@@ -200,7 +201,7 @@ public:
 	void add_block(Block* block, bool update_balances);
 
 	void delete_invalid_free_blocks(Block* block);
-	void free_blocks_dfs(Block* block, vector<int>& cur_balances, set<Block*>& blocks_to_add, Block*& deepest_block);
+	void free_blocks_dfs(Block* block, vector<int>& cur_balances, custom_unordered_set<Block*>& blocks_to_add, Block*& deepest_block);
 
 	void schedule_next_transaction(Simulator* sim);
 	Transaction* generate_transaction(Simulator* sim); // generate transaction for this peer
@@ -247,6 +248,7 @@ public:
 	void delete_event(Event* event);
 	void run(ld end_time, bool verbose_, int max_txns_, int max_blocks_);
 	void log_time(ostream& os);
+	void complete_non_generate_events(bool verbose);
 };
 
 #endif

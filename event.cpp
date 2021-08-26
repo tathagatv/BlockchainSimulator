@@ -4,6 +4,7 @@ using namespace std;
 // ======================================================================= //
 Event::Event(ld timestamp_) {
     timestamp = timestamp_;
+	is_generate_type_event = false;
 }
 
 bool Event::operator<(const Event& other) {
@@ -17,6 +18,7 @@ void Event::run(Simulator* sim, bool verbose) {
 // ======================================================================= //
 GenerateTransaction::GenerateTransaction(ld timestamp_, Peer* p) : Event(timestamp_) {
     payed_by = p;
+	is_generate_type_event = true;
 }
 
 void GenerateTransaction::run(Simulator* sim, bool verbose) {
@@ -60,6 +62,7 @@ void ReceiveTransaction::run(Simulator* sim, bool verbose) {
 // ======================================================================= //
 BroadcastMinedBlock::BroadcastMinedBlock(ld timestamp, Peer* p) : Event(timestamp) {
 	owner = p;
+	is_generate_type_event = true;
 }
 
 void BroadcastMinedBlock::run(Simulator* sim, bool verbose) {
@@ -71,7 +74,7 @@ void BroadcastMinedBlock::run(Simulator* sim, bool verbose) {
 	if (is_valid)
 		owner->add_block(block, true);
 
-	if (verbose) {
+	if (true) {
 		sim->log_time(cout);
 		cout << owner->get_name() << " mines and broadcasts block " << block->get_name() << '\n';
 	}

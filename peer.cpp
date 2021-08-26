@@ -16,6 +16,7 @@ Peer::Peer() {
     unif_dist_peer = uniform_int_distribution<int>(0, total_peers - 1);
 
     blockchain = Blockchain();
+    chain_blocks[blockchain.current_block->id] = blockchain.current_block;
 }
 
 string Peer::get_name() {
@@ -154,7 +155,7 @@ void Peer::add_block(Block* block, bool update_balances) {
 }
 
 void Peer::delete_invalid_free_blocks(Block* block) {
-    map<int, vector<Block*>>::iterator it;
+    custom_map<int, vector<Block*>>::iterator it;
     it = free_block_parents.find(block->id);
 
     delete block;
@@ -170,7 +171,7 @@ void Peer::delete_invalid_free_blocks(Block* block) {
     free_block_parents.erase(it);
 }
 
-void Peer::free_blocks_dfs(Block* block, vector<int>& cur_balances, set<Block*>& blocks_to_add, Block*& deepest_block) {
+void Peer::free_blocks_dfs(Block* block, vector<int>& cur_balances, custom_unordered_set<Block*>& blocks_to_add, Block*& deepest_block) {
     if (!validate_block(block, cur_balances)) {
         delete_invalid_free_blocks(block);
         return;
@@ -180,7 +181,7 @@ void Peer::free_blocks_dfs(Block* block, vector<int>& cur_balances, set<Block*>&
     if (deepest_block == NULL || block->depth > deepest_block->depth)
         deepest_block = block;
 
-    map<int, vector<Block*>>::iterator it;
+    custom_map<int, vector<Block*>>::iterator it;
     it = free_block_parents.find(block->id);
     if (it == free_block_parents.end()) 
         return;
@@ -210,7 +211,7 @@ void Peer::free_blocks_dfs(Block* block, vector<int>& cur_balances, set<Block*>&
 }
 
 void Peer::receive_block(Simulator* sim, Peer* sender, Block* block) {
-    map<int, Block*>::iterator chain_it, free_it;
+    custom_map<int, Block*>::iterator chain_it, free_it;
 
     chain_it = chain_blocks.find(block->id);
     free_it = free_blocks.find(block->id);
@@ -257,7 +258,7 @@ void Peer::receive_block(Simulator* sim, Peer* sender, Block* block) {
     for (int i = 0; i < total_peers; i++)
         current_balance_change[i] += balances[i] - branch_balance_change[i];
 
-    set<Block*> blocks_to_add;
+    custom_unordered_set<Block*> blocks_to_add;
     Block* deepest_block = NULL;
 
     free_blocks_dfs(block, current_balance_change, blocks_to_add, deepest_block);
@@ -293,10 +294,11 @@ void Peer::receive_block(Simulator* sim, Peer* sender, Block* block) {
         for (Block* b : blocks_to_add)
             add_block(b, false);
 
-        sim->delete_event(next_mining_event);
-        delete next_mining_block;
-        schedule_next_block(sim);
-
+        if (next_mining_event != NULL) {
+            sim->delete_event(next_mining_event);
+            delete next_mining_block;
+            schedule_next_block(sim);
+        }
     } else {
         for (Block* b : blocks_to_add)
             add_block(b, false);
@@ -304,6 +306,10 @@ void Peer::receive_block(Simulator* sim, Peer* sender, Block* block) {
 }
 
 void Peer::traverse_blockchain(Block* b, ostream& os) {
+    // for canonicalization
+    sort(all(b->next), [](Block* a1, Block* a2) {
+        return (a1->id) < (a2->id);
+    });
     for (Block* c : b->next) {
         os << (b->id + 1) << ' ' << (c->id + 1) << '\n';
         traverse_blockchain(c, os);
@@ -311,7 +317,7 @@ void Peer::traverse_blockchain(Block* b, ostream& os) {
 }
 
 void Peer::export_blockchain() {
-    string filename = "blockchain/peer" + to_string(id) + "_blockchain.txt";
+    string filename = "blockchain/blockchain_edgelist" + to_string(id) + ".txt";
     ofstream outfile(filename);
     traverse_blockchain(blockchain.genesis, outfile);
     outfile.close();

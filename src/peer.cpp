@@ -18,6 +18,8 @@ Peer::Peer() {
 
     blockchain = Blockchain();
     chain_blocks[blockchain.current_block->id] = blockchain.current_block;
+
+    block_arrival_times.emplace_back(make_pair(blockchain.genesis, 0));
 }
 
 string Peer::get_name() {
@@ -112,9 +114,13 @@ bool Peer::validate_txn(Transaction* txn, vector<int>& custom_balances) {
 bool Peer::validate_block(Block* block, vector<int>& custom_balances) {
     if (block->size > Block::max_size)
         return false;
-    for (Transaction* txn : block->txns) 
-        if (!validate_txn(txn, custom_balances))
+    vector<int> balances_copy = custom_balances;
+    for (Transaction* txn : block->txns) {
+        if (!validate_txn(txn, balances_copy))
             return false;
+        balances_copy[txn->sender->id] -= txn->amount;
+        balances_copy[txn->receiver->id] += txn->amount;
+    }
     return true;
 }
 
@@ -123,6 +129,7 @@ Block* Peer::generate_new_block(Simulator* sim) {
     Block* block = new Block(this);
     block->set_parent(blockchain.current_block);
     bool is_invalid = false;
+    vector<int> balances_copy = balances;
     if (generate_invalid) {
         for (Transaction* txn : txn_pool) {
             if (block->size + TRANSACTION_SIZE > Block::max_size) {
@@ -132,18 +139,22 @@ Block* Peer::generate_new_block(Simulator* sim) {
                 }
                 break;
             }
-            if (!validate_txn(txn, balances))
+            if (!validate_txn(txn, balances_copy))
                 is_invalid = true;
+            balances_copy[txn->sender->id] -= txn->amount;
+            balances_copy[txn->receiver->id] += txn->amount;
             block->add(txn);
         }
-        if (is_invalid)
-            return block;
+        return block;
     } 
     for (Transaction* txn : txn_pool) {
         if (block->size + TRANSACTION_SIZE > Block::max_size) 
             break;
-        if (validate_txn(txn, balances))
+        if (validate_txn(txn, balances_copy)) {
             block->add(txn);
+            balances_copy[txn->sender->id] -= txn->amount;
+            balances_copy[txn->receiver->id] += txn->amount;
+        }
     }
     return block;
 }
@@ -185,12 +196,13 @@ void Peer::add_block(Block* block, bool update_balances) {
     }
 }
 
-void Peer::delete_invalid_free_blocks(Block* block) {
+void Peer::delete_invalid_free_blocks(Block* block, Simulator* sim) {
     custom_map<int, vector<Block*>>::iterator it;
     it = free_block_parents.find(block->id);
     
     // add block to rejected_blocks
     rejected_blocks.insert(block->id);
+    sim->log(cout, get_name() + " REJECTS block " + block->get_name());
     
     delete block;
 
@@ -200,14 +212,14 @@ void Peer::delete_invalid_free_blocks(Block* block) {
     // recursive call to delete child blocks
     for (Block* child : it->second) {
         free_blocks.erase(child->id);
-        delete_invalid_free_blocks(child);
+        delete_invalid_free_blocks(child, sim);
     }
     free_block_parents.erase(it);
 }
 
-void Peer::free_blocks_dfs(Block* block, vector<int>& cur_balances, custom_unordered_set<Block*>& blocks_to_add, Block*& deepest_block) {
+void Peer::free_blocks_dfs(Block* block, vector<int>& cur_balances, custom_unordered_set<Block*>& blocks_to_add, Block*& deepest_block, Simulator* sim) {
     if (!validate_block(block, cur_balances)) {
-        delete_invalid_free_blocks(block);
+        delete_invalid_free_blocks(block, sim);
         return;
     }
 
@@ -232,7 +244,7 @@ void Peer::free_blocks_dfs(Block* block, vector<int>& cur_balances, custom_unord
         assert(child->parent == NULL);
         child->set_parent(block);
         free_blocks.erase(child->id);
-        free_blocks_dfs(child, cur_balances, blocks_to_add, deepest_block);
+        free_blocks_dfs(child, cur_balances, blocks_to_add, deepest_block, sim);
     }
     free_block_parents.erase(it);
 
@@ -256,9 +268,9 @@ void Peer::receive_block(Simulator* sim, Peer* sender, Block* block) {
     if (chain_it != chain_blocks.end() || free_it != free_blocks.end() || reject_it != rejected_blocks.end()) 
         return;
 
+    block_arrival_times.emplace_back(make_pair(block->clone(), sim->current_timestamp));
     // forward every received block regardless of validity
-    Block* block_copy = block->clone();
-    Event* ev = new ForwardBlock(0, this, sender, block_copy);
+    Event* ev = new ForwardBlock(0, this, sender, block->clone());
     sim->add_event(ev);
     
     chain_it = chain_blocks.find(block->parent_id);
@@ -298,13 +310,11 @@ void Peer::receive_block(Simulator* sim, Peer* sender, Block* block) {
     custom_unordered_set<Block*> blocks_to_add;
     Block* deepest_block = NULL;
 
-    free_blocks_dfs(block, current_balance_change, blocks_to_add, deepest_block);
+    free_blocks_dfs(block, current_balance_change, blocks_to_add, deepest_block, sim);
 
     // block is invalid
-    if (deepest_block == NULL) {
-        sim->log(cout, get_name() + " REJECTS block " + block_copy->get_name());
+    if (deepest_block == NULL)
         return;
-    }
 
     // now block gets added to blockchain
     // balances will be updated only if branch was changed
@@ -344,20 +354,62 @@ void Peer::receive_block(Simulator* sim, Peer* sender, Block* block) {
     }
 }
 
-void Peer::traverse_blockchain(Block* b, ostream& os) {
+void Peer::traverse_blockchain(Block* b, ostream& os, Block*& deepest_block, vector<int>& total_blocks) {
     // for canonicalization
     sort(all(b->next), [](Block* a1, Block* a2) {
         return (a1->id) < (a2->id);
     });
+    if (b->depth > deepest_block->depth)
+        deepest_block = b;
+
+    if (b->parent_id >= 0)
+        total_blocks[b->owner->id]++;
+    
     for (Block* c : b->next) {
         os << (b->id + 1) << ' ' << (c->id + 1) << '\n';
-        traverse_blockchain(c, os);
+        traverse_blockchain(c, os, deepest_block, total_blocks);
     }
 }
 
-void Peer::export_blockchain() {
-    string filename = "output/blockchain_edgelist" + to_string(id) + ".txt";
+void Peer::export_arrival_times(ostream& os) {
+    os << get_name() << '\n';
+    for (pair<Block*, ld>& p : block_arrival_times) {
+        Block* b = p.first;
+        ld timestamp = p.second;
+        os << b->get_name() << ", ";
+        os << (b->depth) << ", ";
+        os << fixed << setprecision(5) << timestamp << ", ";
+        if (b->parent == NULL)
+            os << "NO_PARENT" << '\n';
+        else
+            os << b->parent->get_name() << '\n';
+    }
+    os << '\n';
+}
+
+void Peer::analyse_and_export_blockchain() {
+    string filename = "output/blockchain_edgelist_" + to_string(id) + ".txt";
     ofstream outfile(filename);
-    traverse_blockchain(blockchain.genesis, outfile);
+    Block* deepest_block = blockchain.genesis;
+    vector<int> total_blocks(total_peers, 0);
+    traverse_blockchain(blockchain.genesis, outfile, deepest_block, total_blocks);
+    // cout << deepest_block << endl;
+    outfile.close();
+    
+    vector<int> blocks_in_chain(total_peers, 0);
+    while (deepest_block->id != blockchain.genesis->id) {
+        blocks_in_chain[deepest_block->owner->id]++;
+        // cout << deepest_block->id << endl;
+        deepest_block = deepest_block->parent;
+        // cout << deepest_block->id << endl;
+    }
+
+    filename = "output/blocks_each_peer_" + to_string(id) + ".txt";
+    outfile = ofstream(filename);
+    for (int i = 0; i < total_peers; i++) {
+        outfile << (i + 1) << '\t';
+        outfile << blocks_in_chain[i] << '/';
+        outfile << total_blocks[i] << '\n';
+    }
     outfile.close();
 }

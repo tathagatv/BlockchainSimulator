@@ -2,6 +2,8 @@
 # pip install networkx pydot matplotlib
 
 import os
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import networkx as nx
 import pydot
@@ -9,6 +11,7 @@ from networkx.drawing.nx_pydot import graphviz_layout
 import glob
 from tqdm import tqdm
 from os.path import dirname, abspath
+
 
 def draw_blockchain(G, filename):
     pos = graphviz_layout(G, prog="dot")
@@ -24,12 +27,11 @@ def draw_blockchain(G, filename):
 base = os.path.join(dirname(dirname(abspath(__file__))), 'output')
 graphs = []
 
-for file in glob.glob(os.path.join(base, 'blockchain_edgelist*.txt')):
-    print(file)
+for file in glob.glob(os.path.join(base, 'blockchain_edgelist_*.txt')):
     with open(file, 'r') as fp:
         G = nx.read_edgelist(fp, create_using=nx.DiGraph)
     graphs.append(G)
 
 for i in tqdm(range(len(graphs[:1]))):
-    file = os.path.join(base, f'blockchain_image{i}.png')
+    file = os.path.join(base, f'blockchain_image_{i}.png')
     draw_blockchain(graphs[i], file)

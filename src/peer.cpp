@@ -13,6 +13,7 @@ Peer::Peer() {
     assert(Ttx > 0);
     assert(Tk > 0);
     // avg of expo dist = 1/lambda
+    degree = 0;
     txn_interarrival_time = exponential_distribution<ld>(1.0 / Ttx);
     unif_dist_peer = uniform_int_distribution<int>(0, total_peers - 1);
     unif_rand_real = uniform_real_distribution<ld>(0, 1);
@@ -32,8 +33,15 @@ string Peer::get_name() {
     return "Peer" + to_string(id + 1);
 }
 
+int Peer::get_degree() {
+    return degree;
+}
+
 // adds a link between peer a and peer b
 void Peer::add_edge(Peer *a, Peer *b) {
+    a->degree++;
+    b->degree++;
+
     Link ab(b, a->is_fast);
     (a->adj).emplace_back(ab);
 

@@ -53,36 +53,63 @@ void Simulator::form_random_network() {
     assert(edges >= n - 1);
     int n = peers.size();
     uniform_int_distribution<int> unif(0, n - 1);
+ 
+    // preferential attachment algorithm - scale free network
+    int node_1 = unif(rng64);
+    int node_2 = unif(rng64);
+    while(node_2==node_1){
+        node_2 = unif(rng64);
+    }
 
-    // https://stackoverflow.com/a/14618505
-    int current_node = unif(rng64);
     set<int> s, t;
-    for (int i = 0; i < n; i++)
+    for(int i=0; i<n; i++){
         s.insert(i);
+    }
 
-    s.erase(current_node);
-    t.insert(current_node);
+    s.erase(node_1);
+    s.erase(node_2);
+    t.insert(node_1);
+    t.insert(node_2);
 
     set<pair<int, int>> edges_log;
+
+    Peer::add_edge(&peers[node_1], &peers[node_2]);
+    edges_log.insert(make_pair(node_1, node_2));
+    edges--;
+
     while (!s.empty()) {
-        int neighbour_node = unif(rng64);
-        if (t.find(neighbour_node) == t.end()) {
-            Peer::add_edge(&peers[current_node], &peers[neighbour_node]);
-            edges_log.insert(make_pair(current_node, neighbour_node));
-            s.erase(neighbour_node);
-            t.insert(neighbour_node);
+        int next_node = unif(rng64);
+        if (t.find(next_node) == t.end()) {
+            vector<int> prob(n, 0);
+            for(int i=0; i<n; i++){
+                prob[i] = peers[i].get_degree();
+            }
+            discrete_distribution<int> disc(prob.begin(), prob.end());
+            int neighbour_node = disc(rng64);
+            while(neighbour_node==next_node){
+                neighbour_node = disc(rng64);
+            }
+            Peer::add_edge(&peers[next_node], &peers[neighbour_node]);
+            edges_log.insert(make_pair(next_node, neighbour_node));
+            s.erase(next_node);
+            t.insert(next_node);
             edges--;
         }
-        current_node = neighbour_node;
     }
+    
     set<pair<int, int>>::iterator it;
     while (edges > 0) {
         int a = unif(rng64);
-        int b = unif(rng64);
-        while (a == b)
-            b = unif(rng64);
-        it = edges_log.find(make_pair(a, b));
-        if (it == edges_log.end()) {
+        vector<int> prob(n, 0);
+        for(int i=0; i<n; i++){
+            prob[i] = peers[i].get_degree();
+        }
+        discrete_distribution<int> disc(prob.begin(), prob.end());
+        int b = disc(rng64);
+        while(b==a){
+            b = disc(rng64);
+        }
+        if(!edges_log.count(make_pair(a, b)) && !edges_log.count(make_pair(b, a))){
             Peer::add_edge(&peers[a], &peers[b]);
             edges--;
         }

@@ -150,11 +150,12 @@ void Simulator::complete_non_generate_events() {
         delete_event(current_event);
     }
     peers[0].analyse_and_export_blockchain();
-    string filename = "output/block_arrivals.txt";
-    ofstream outfile(filename);
-    for (Peer& p : peers)
+    for (Peer& p : peers){
+        string filename = "output/block_arrivals_" + to_string(p.id+1) + ".txt";
+        ofstream outfile(filename);
         p.export_arrival_times(outfile);
-    outfile.close();
+        outfile.close();
+    }
 }
 
 void Simulator::log(ostream& os, const string& s) {

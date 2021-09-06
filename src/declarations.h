@@ -197,6 +197,7 @@ public:
 	custom_unordered_set<int> rejected_blocks;
 	custom_map<int, Block*> chain_blocks, free_blocks;
 	custom_map<int, vector<Block*>> free_block_parents;
+	vector<pair<Block*, ld>> block_arrival_times;
 
 	Peer();
 	static void add_edge(Peer* a, Peer* b);
@@ -204,8 +205,8 @@ public:
 	string get_name();
 	void add_block(Block* block, bool update_balances);
 
-	void delete_invalid_free_blocks(Block* block);
-	void free_blocks_dfs(Block* block, vector<int>& cur_balances, custom_unordered_set<Block*>& blocks_to_add, Block*& deepest_block);
+	void delete_invalid_free_blocks(Block* block, Simulator* sim);
+	void free_blocks_dfs(Block* block, vector<int>& cur_balances, custom_unordered_set<Block*>& blocks_to_add, Block*& deepest_block, Simulator* sim);
 
 	void schedule_next_transaction(Simulator* sim);
 	Transaction* generate_transaction(Simulator* sim); // generate transaction for this peer
@@ -220,8 +221,9 @@ public:
 	void forward_block(Simulator* sim, Peer* source, Block* block); 
 	void receive_block(Simulator* sim, Peer* sender, Block* block);
 
-	void traverse_blockchain(Block* b, ostream& os);
-	void export_blockchain();
+	void traverse_blockchain(Block* b, ostream& os, Block*& deepest_block, vector<int>& total_blocks);
+	void export_arrival_times(ostream& os);
+	void analyse_and_export_blockchain();
 };
 
 // ====================================================================== //
@@ -245,6 +247,7 @@ public:
 	set<Event*, EventPtrComp> events;
 	vector<Peer> peers;
 	bool verbose;
+	bool has_simulation_ended;
 
 	Simulator(int n_, ld z_, ld Ttx_, ld Tk_, int edges_, bool verbose_, ld invalid_txn_prob_, ld invalid_block_prob_);	
 	void get_new_peers();

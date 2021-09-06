@@ -11,6 +11,7 @@ Simulator::Simulator(int n_, ld z_, ld Ttx_, ld Tk_, int edges_, bool verbose_, 
     invalid_txn_prob = invalid_txn_prob_;
     invalid_block_prob = invalid_block_prob_;
     verbose = verbose_;
+    has_simulation_ended = false;
 
     Transaction::counter = 0;
     Block::max_size = 1000;
@@ -128,6 +129,7 @@ void Simulator::run(ld end_time_, int max_txns_, int max_blocks_) {
     get_new_peers();
     form_random_network();
     init_events();
+    has_simulation_ended = false;
 
     int max_txns = max_txns_ <= 0 ? INT_MAX : max_txns_;
     int max_blocks = max_blocks_ <= 0 ? INT_MAX : max_blocks_;
@@ -156,6 +158,8 @@ void Simulator::run(ld end_time_, int max_txns_, int max_blocks_) {
 }
 
 void Simulator::complete_non_generate_events() {
+    has_simulation_ended = true;
+    
     for (Peer& p : peers) {
         p.next_mining_event = NULL;
         p.next_mining_block = NULL;
@@ -172,8 +176,13 @@ void Simulator::complete_non_generate_events() {
 
         delete_event(current_event);
     }
-
-    peers[0].export_blockchain();
+    peers[0].analyse_and_export_blockchain();
+    for (Peer& p : peers){
+        string filename = "output/block_arrivals_" + to_string(p.id+1) + ".txt";
+        ofstream outfile(filename);
+        p.export_arrival_times(outfile);
+        outfile.close();
+    }
 }
 
 void Simulator::log(ostream& os, const string& s) {

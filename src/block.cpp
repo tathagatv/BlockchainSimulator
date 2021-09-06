@@ -33,7 +33,7 @@ Block* Block::clone() {
 
 void Block::set_parent(Block* b) {
     parent = b;
-    parent_id = (b == NULL) ? -1 : b->id;
+    parent_id = (b == NULL) ? -2 : b->id;
     depth = (b == NULL) ? 0 : b->depth + 1;
 }
 

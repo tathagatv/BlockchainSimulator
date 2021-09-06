@@ -182,6 +182,7 @@ public:
 	uniform_int_distribution<int> unif_dist_peer;
 	uniform_real_distribution<ld> unif_rand_real;
 	int id;
+	int degree;
 	bool is_fast;
 	vector<int> balances;
 	vector<Link> adj;
@@ -199,6 +200,7 @@ public:
 
 	Peer();
 	static void add_edge(Peer* a, Peer* b);
+	int get_degree();
 	string get_name();
 	void add_block(Block* block, bool update_balances);
 

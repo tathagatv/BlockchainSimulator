@@ -5,6 +5,8 @@ int Peer::counter;
 int Peer::total_peers;
 ld Peer::Ttx;
 ld Peer::Tk;
+ld Peer::Hvar;
+vector<Peer> Simulator::peers;
 
 Peer::Peer() {
     balances.assign(total_peers, 0);
@@ -12,7 +14,6 @@ Peer::Peer() {
     assert(Tk > 0);
     // avg of expo dist = 1/lambda
     txn_interarrival_time = exponential_distribution<ld>(1.0 / Ttx);
-    block_mining_time = exponential_distribution<ld>(1.0 / Tk);
     unif_dist_peer = uniform_int_distribution<int>(0, total_peers - 1);
     unif_rand_real = uniform_real_distribution<ld>(0, 1);
 
@@ -20,6 +21,11 @@ Peer::Peer() {
     chain_blocks[blockchain.current_block->id] = blockchain.current_block;
 
     block_arrival_times.emplace_back(make_pair(blockchain.genesis, 0));
+}
+
+void Peer::initialize_block_mining_distribution(ld hash_power){
+    this->hash_power = hash_power;
+    block_mining_time = exponential_distribution<ld>(1.0 / (Tk*hash_power));
 }
 
 string Peer::get_name() {
@@ -408,8 +414,9 @@ void Peer::analyse_and_export_blockchain() {
     outfile = ofstream(filename);
     for (int i = 0; i < total_peers; i++) {
         outfile << (i + 1) << '\t';
-        outfile << blocks_in_chain[i] << '/';
-        outfile << total_blocks[i] << '\n';
+        outfile << blocks_in_chain[i] << " / ";
+        outfile << total_blocks[i] << '\t';
+        outfile << Simulator::peers[i].hash_power << "\n";
     }
     outfile.close();
 }

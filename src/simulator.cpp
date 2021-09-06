@@ -1,11 +1,11 @@
 #include "declarations.h"
 using namespace std;
 
-Simulator::Simulator(int n_, ld z_, ld Ttx_, ld Tk_, int edges_, bool verbose_, ld invalid_txn_prob_, ld invalid_block_prob_) {
+Simulator::Simulator(int n_, ld z_, ld Ttx_, ld Tk_, ld Hvar_, int edges_, bool verbose_, ld invalid_txn_prob_, ld invalid_block_prob_) {
     n = n_;
     z_ = min((ld)1, max(z_, (ld)0));
     slow_peers = z_ * n;
-    Ttx = Ttx_; Tk = Tk_;
+    Ttx = Ttx_; Tk = Tk_; Hvar = Hvar_;
     edges = edges_;
     current_timestamp = START_TIME;
     invalid_txn_prob = invalid_txn_prob_;
@@ -22,6 +22,7 @@ Simulator::Simulator(int n_, ld z_, ld Ttx_, ld Tk_, int edges_, bool verbose_, 
     Peer::total_peers = n;
     Peer::Ttx = Ttx;
     Peer::Tk = Tk;
+    Peer::Hvar = Hvar;
 }
 
 void Simulator::get_new_peers() {
@@ -35,6 +36,17 @@ void Simulator::get_new_peers() {
     for (int i = 0; i < n; i++) {
         peers[i].id = Peer::counter++;
     }
+
+    // create hash power distribution
+    vector<ld> hash_power_distribution(n);
+    ld hash_power_norma = 0;
+    for (int i = 0; i < n; i++){
+        hash_power_distribution[i] = exp(-pow((i-n/2.0), 2)/(2*pow(Hvar, 2)));
+        hash_power_norma += hash_power_distribution[i];
+    }
+    for (int i = 0; i < n; i++)
+        peers[i].initialize_block_mining_distribution(hash_power_distribution[i]/hash_power_norma);
+    
 }
 
 void Simulator::form_random_network() {

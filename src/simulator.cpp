@@ -1,12 +1,12 @@
 #include "declarations.h"
 using namespace std;
 
-Simulator::Simulator(int n_, ld z_, ld Ttx_, ld Tk_, ld Hvar_, int edges_, bool verbose_, ld invalid_txn_prob_, ld invalid_block_prob_) {
+Simulator::Simulator(int n_, ld z_, ld Ttx_, ld Tk_, int edges_, bool verbose_, ld invalid_txn_prob_, ld invalid_block_prob_) {
     n = n_;
     // ensure z (fraction of slow peers) is between 0 and 1
     z_ = min((ld)1, max(z_, (ld)0)); 
     slow_peers = z_ * n;
-    Ttx = Ttx_; Tk = Tk_; Hvar = Hvar_;
+    Ttx = Ttx_; Tk = Tk_; 
     edges = edges_;
     current_timestamp = START_TIME;
     invalid_txn_prob = invalid_txn_prob_;
@@ -23,7 +23,6 @@ Simulator::Simulator(int n_, ld z_, ld Ttx_, ld Tk_, ld Hvar_, int edges_, bool 
     Peer::total_peers = n;
     Peer::Ttx = Ttx;
     Peer::Tk = Tk;
-    Peer::Hvar = Hvar;
 }
 
 /* initialize peers */

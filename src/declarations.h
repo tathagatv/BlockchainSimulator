@@ -201,8 +201,6 @@ public:
 	static ld Ttx; 
 	/* Ttx: mean mining time of a block */
 	static ld Tk; 
-	/* Hvar: variance of gaussian distribution of hash power */
-	static ld Hvar; 
 	/* fraction of the entire hash power */
 	ld hash_power; 
 
@@ -291,9 +289,8 @@ class Simulator {
 public:
 	/* n: no of peers, slow_peers: no of slow peers, edges: total no of edges in network */
 	int n, slow_peers, edges;
-	/* Tk: mean block inter arrival time, Ttx: mean txn interarrival time, 
-	Hvar: variance of gaussian distribution of hash power */
-	ld Tk, Ttx, Hvar;
+	/* Tk: mean block inter arrival time, Ttx: mean txn interarrival time */
+	ld Tk, Ttx;
 	/* probabilities with which invalid blocks and invalid transactions are generated */
 	ld invalid_txn_prob, invalid_block_prob;
 	ld current_timestamp;
@@ -307,7 +304,7 @@ public:
 	/* true after end_time */
 	bool has_simulation_ended;
 
-	Simulator(int n_, ld z_, ld Ttx_, ld Tk_, ld Hvar_, int edges_, bool verbose_, ld invalid_txn_prob_, ld invalid_block_prob_);	
+	Simulator(int n_, ld z_, ld Ttx_, ld Tk_, int edges_, bool verbose_, ld invalid_txn_prob_, ld invalid_block_prob_);	
 	void get_new_peers();
 	void form_random_network();
 	void init_events();

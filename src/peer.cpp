@@ -5,7 +5,6 @@ int Peer::counter;
 int Peer::total_peers;
 ld Peer::Ttx;
 ld Peer::Tk;
-ld Peer::Hvar;
 vector<Peer> Simulator::peers;
 
 /* constructor */

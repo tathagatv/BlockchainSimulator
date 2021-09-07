@@ -47,12 +47,6 @@ int main(int argc, char *argv[]) {
 	.help("Mean of exponential distribution of time to mine a block")
 	.action([](const string& value) { return stold(value); });
 
-	argparser.add_argument("--hash_power_variance", "-Hvar")
-	.default_value((ld)10.0)
-	.required()
-	.help("Variance of gaussian distribution of hashing power")
-	.action([](const string& value) { return stold(value); });
-
 	argparser.add_argument("--seed", "-s")
 	.default_value((int)42)
 	.required()
@@ -94,7 +88,6 @@ int main(int argc, char *argv[]) {
 	ld t = argparser.get<ld>("-t");
 	ld Ttx = argparser.get<ld>("-Ttx");
 	ld Tk = argparser.get<ld>("-Tk");
-	ld Hvar = argparser.get<ld>("-Hvar");
 	int n = argparser.get<int>("-n");
 	int seed = argparser.get<int>("-s");
 	int edges = argparser.get<int>("-e");
@@ -107,7 +100,7 @@ int main(int argc, char *argv[]) {
 	rng.seed(seed);
 	rng64.seed(seed);
 
-	Simulator simulator(n, z, Ttx, Tk, Hvar, edges, verbose, invalid_txn_prob, invalid_block_prob);
+	Simulator simulator(n, z, Ttx, Tk, edges, verbose, invalid_txn_prob, invalid_block_prob);
 	simulator.run(t, max_txns, max_blocks);
 
 	return 0;

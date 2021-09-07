@@ -78,8 +78,8 @@ void Simulator::form_random_network() {
     vector<int> degrees(n, 0);
     Peer::add_edge(&peers[node_1], &peers[node_2]);
     edges_log.insert(make_pair(node_1, node_2));
-    edges--;
-    
+    edges--, degrees[node_1]++, degrees[node_2]++;
+
     while (!s.empty()) {
         int next_node = unif(rng64);
         if (t.find(next_node) == t.end()) {

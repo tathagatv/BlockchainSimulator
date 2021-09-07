@@ -38,7 +38,7 @@ int main(int argc, char *argv[]) {
 	argparser.add_argument("--txn_interarrival", "-Ttx")
 	.default_value((ld)40)
 	.required()
-	.help("Mean of exponential distribution of interarrival time betweek transactions")
+	.help("Mean of exponential distribution of interarrival time between transactions")
 	.action([](const string& value) { return stold(value); });
 
 	argparser.add_argument("--mining_time", "-Tk")

@@ -12,13 +12,13 @@ int main(int argc, char *argv[]) {
 	argparse::ArgumentParser argparser("./blockchain_simulator", "1.0");
 
 	argparser.add_argument("--peers", "-n")
-	.default_value((int)20)
+	.default_value((int)40)
 	.required()
 	.help("Number of peers in the network")
 	.action([](const string& value) { return stoi(value); });
 
 	argparser.add_argument("--edges", "-e")
-	.default_value((int)70)
+	.default_value((int)150)
 	.required()
 	.help("Number of edges in the peer network")
 	.action([](const string& value) { return stoi(value); });
@@ -60,7 +60,7 @@ int main(int argc, char *argv[]) {
 	.action([](const string& value) { return stoi(value); });
 
 	argparser.add_argument("--max_blocks", "-blk")
-	.default_value((int)300)
+	.default_value((int)100)
 	.required()
 	.help("Run simulation till max blocks are generated, 0 indicates infinity")
 	.action([](const string& value) { return stoi(value); });

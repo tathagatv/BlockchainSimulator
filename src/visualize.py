@@ -54,7 +54,7 @@ def calc_graph_stats(G):
             length = max_depth[u] - depth[deepest_node]
             branch_lengths.append(length)
 
-    return max_depth[genesis], np.array(branch_lengths)
+    return max_depth[genesis] + 1, np.array(branch_lengths)
 
 
 base = os.path.join(dirname(dirname(abspath(__file__))), 'output')
@@ -69,7 +69,10 @@ max_depth, branch_lengths = calc_graph_stats(G)
 print('Total blocks in Blockchain:', len(G.nodes()))
 print('Longest chain length:', max_depth)
 print('Longest chain length / total number of blocks: %.3f' % (max_depth / len(G.nodes())))
-print(f'Branch Lengths: Total={len(branch_lengths)}, Max={branch_lengths.max()}, Mean={branch_lengths.mean():.3f}, Min={branch_lengths.min()}')
+if len(branch_lengths) > 0:
+    print(f'Branch Lengths: Total={len(branch_lengths)}, Max={branch_lengths.max()}, Mean={branch_lengths.mean():.3f}, Min={branch_lengths.min()}')
+else:
+    print('No branches created')
 print()
 
 df = pd.read_csv(os.path.join(base, 'peer_attributes.txt'), index_col='id')

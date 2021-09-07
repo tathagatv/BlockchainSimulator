@@ -10,9 +10,9 @@ Event::Event(ld timestamp_) {
 
 /* compare based on timestamp */
 bool Event::operator<(const Event& other) {
-    if (timestamp != other.timestamp){
+    if (timestamp != other.timestamp) {
 		return timestamp < other.timestamp;
-	}else{
+	} else {
 		// two different events with same timestamp should not be considered as equal
 		return this < &other;
 	}

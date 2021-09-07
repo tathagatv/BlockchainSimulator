@@ -22,6 +22,8 @@ Peer::Peer() {
     chain_blocks[blockchain.current_block->id] = blockchain.current_block;
 
     block_arrival_times.emplace_back(make_pair(blockchain.genesis, 0));
+
+    hash_power = (unif_rand_real(rng64) < 0.5) ? 0.1 : 0.5;
 }
 
 void Peer::initialize_block_mining_distribution(ld hash_power){
@@ -401,7 +403,7 @@ void Peer::export_arrival_times(ostream& os) {
 }
 
 void Peer::analyse_and_export_blockchain(Simulator* sim) {
-    string filename = "output/blockchain_edgelist_" + to_string(id) + ".txt";
+    string filename = "output/blockchain_edgelist.txt";
     ofstream outfile(filename);
     Block* deepest_block = blockchain.genesis;
     vector<int> total_blocks(total_peers, 0);
@@ -414,13 +416,15 @@ void Peer::analyse_and_export_blockchain(Simulator* sim) {
         deepest_block = deepest_block->parent;
     }
 
-    filename = "output/blocks_each_peer_" + to_string(id) + ".txt";
+    filename = "output/peer_attributes.txt";
     outfile = ofstream(filename);
+    outfile << "id,chain_blocks,generated_blocks,is_fast,hash_power\n";
     for (int i = 0; i < total_peers; i++) {
-        outfile << (i + 1) << '\t';
-        outfile << blocks_in_chain[i] << " / ";
-        outfile << total_blocks[i] << '\t';
-        outfile << sim->peers[i].hash_power << "\n";
+        outfile << (i + 1) << ',';
+        outfile << blocks_in_chain[i] << ',';
+        outfile << total_blocks[i] << ',';
+        outfile << (int)sim->peers[i].is_fast << ',';
+        outfile << sim->peers[i].hash_power << '\n';
     }
     outfile.close();
 }

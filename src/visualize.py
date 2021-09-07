@@ -12,6 +12,8 @@ from networkx.drawing.nx_pydot import graphviz_layout
 from glob import glob
 from tqdm import tqdm
 from os.path import dirname, abspath
+import pandas as pd
+import numpy as np
 
 
 def draw_blockchain(G, filename):
@@ -37,28 +39,30 @@ for file in glob(os.path.join(base, 'blockchain_edgelist_*.txt')):
     draw_blockchain(G, outfile)
     break
 
-for file in glob(os.path.join(base, 'blocks_each_peer_*.txt')):
-    peer_ids, num_blocks_in_chain, blocks_generated, hash_pwr = list(), list(), list(), list()
-    with open(file, 'r') as fp:
-        for l in fp.readlines():
-            if not l.strip(): continue
-            line_split = l.strip().split()
-            peer_ids.append(int(line_split[0]))
-            num_blocks_in_chain.append(int(line_split[1]))
-            assert line_split[2] == '/'
-            blocks_generated.append(int(line_split[3]))
-            hash_pwr.append(float(line_split[4]))
 
-    total_blocks_in_chain = sum(num_blocks_in_chain)
-    fraction_blocks_in_chain = list(map(lambda x: x / total_blocks_in_chain, num_blocks_in_chain))
+df = pd.read_csv(os.path.join(base, 'peer_attributes.txt'), index_col='id')
 
-    style.use('ggplot')
-    fig = plt.figure(dpi=300)
-    plt.xlabel('Peer ID')
-    plt.title('Statistics')
-    plt.plot(peer_ids, hash_pwr, label='Fraction of Hash Power')
-    plt.plot(peer_ids, fraction_blocks_in_chain, label='Fraction of Blocks in Longest Chain')
-    plt.legend()
-    plt.savefig(os.path.join(base, 'block_stats.png'), bbox_inches='tight')
-    plt.close()
-    break
+for hash_pwr, grp_df in df.groupby(['hash_power']):
+    mean_frac = grp_df['chain_blocks'].divide(grp_df['generated_blocks']).fillna(0).mean()
+    print(f'Hash power: {hash_pwr * 100:.3f}, Mean fraction of blocks: {mean_frac:.3f}')
+print()
+
+for is_fast, grp_df in df.groupby(['is_fast']):
+    mean_frac = grp_df['chain_blocks'].divide(grp_df['generated_blocks']).fillna(0).mean()
+    print(f'Fast Node? {bool(is_fast)}, Mean fraction of blocks: {mean_frac:.3f}')
+print()
+
+df = df.sort_values(by='hash_power').reset_index(drop=True)
+total_blocks_in_chain = df['generated_blocks'].sum()
+fraction_blocks_in_chain = df['chain_blocks'].to_numpy() / total_blocks_in_chain
+peer_ids = df.index.to_numpy()
+
+style.use('ggplot')
+fig = plt.figure(dpi=300)
+plt.xlabel('Peer ID')
+plt.title('Statistics')
+plt.plot(peer_ids, df['hash_power'].to_numpy(), label='Fraction of Hash Power')
+plt.scatter(peer_ids, fraction_blocks_in_chain, label='Fraction of Blocks in Longest Chain')
+plt.legend()
+plt.savefig(os.path.join(base, 'block_stats.png'), bbox_inches='tight')
+plt.close()

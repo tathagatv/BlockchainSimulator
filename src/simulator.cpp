@@ -37,15 +37,11 @@ void Simulator::get_new_peers() {
         peers[i].id = Peer::counter++;
 
     // create hash power distribution
-    vector<ld> hash_power_distribution(n);
     ld normalization_factor = 0;
-    for (int i = 0; i < n; i++) {
-        hash_power_distribution[i] = exp(-pow((i - n / 2.0), 2) / (2 * pow(Hvar, 2)));
-        normalization_factor += hash_power_distribution[i];
-    }
-    for (int i = 0; i < n; i++)
-        peers[i].initialize_block_mining_distribution(hash_power_distribution[i] / normalization_factor);
-    
+    for (Peer& p : peers)
+        normalization_factor += p.hash_power;
+    for (Peer& p : peers)
+        p.initialize_block_mining_distribution(p.hash_power / normalization_factor);
 }
 
 void Simulator::form_random_network() {

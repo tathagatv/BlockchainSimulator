@@ -17,7 +17,7 @@ int main(int argc, char *argv[]) {
 	.action([](const string& value) { return stoi(value); });
 
 	argparser.add_argument("--edges", "-e")
-	.default_value((int)390)
+	.default_value((int)70)
 	.required()
 	.help("Number of edges in the peer network")
 	.action([](const string& value) { return stoi(value); });

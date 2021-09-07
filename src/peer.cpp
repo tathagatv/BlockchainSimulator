@@ -147,6 +147,7 @@ bool Peer::validate_block(Block* block, vector<int>& custom_balances) {
     return true;
 }
 
+/* generate new block: equivalent of mining a block and add corresponding event */
 Block* Peer::generate_new_block(Simulator* sim) {
     bool generate_invalid = (unif_rand_real(rng64) < sim->invalid_block_prob);
     Block* block = new Block(this);
@@ -193,7 +194,7 @@ void Peer::forward_block(Simulator* sim, Peer* source, Block* block) {
     // send block to peers
     // this block is a copy, memory needs to be freed
     for (Link& link : adj) {
-        if (link.peer->id == source->id) continue;  // source already has the txn, loop-less forwarding
+        if (link.peer->id == source->id) continue;  // source already has the blpck, loop-less forwarding
         Block* new_block = block->clone();
         ld delay = link.get_delay(new_block->size);
         Event* ev = new ReceiveBlock(delay, this, link.peer, new_block);
@@ -202,6 +203,7 @@ void Peer::forward_block(Simulator* sim, Peer* source, Block* block) {
     delete block;
 }
 
+/* add block to the blockchain and update balances */
 void Peer::add_block(Block* block, bool update_balances) {
     blockchain.add(block);
     chain_blocks[block->id] = block;
@@ -311,15 +313,20 @@ void Peer::receive_block(Simulator* sim, Peer* sender, Block* block) {
 
     block->set_parent(chain_it->second);
 
-    Block* current_block = blockchain.current_block;
-    Block* branch_block = block->parent;
+    Block* current_block = blockchain.current_block; // last block in the blockchain
+    Block* branch_block = block->parent; // add the new block as a child of branch block
 
-    vector<int> current_balance_change(total_peers, 0);
-    vector<Transaction*> txns_to_add;
+    // balances to update in case longest chain changes
+    vector<int> current_balance_change(total_peers, 0); 
+    // txns to add to the txn pool in case longest chain changes
+    vector<Transaction*> txns_to_add; 
+    // find lca
     while (current_block->depth > branch_block->depth)
         current_block = Blockchain::backward(current_block, current_balance_change, txns_to_add);
     
+    // balances to update in case longest chain changes
     vector<int> branch_balance_change(total_peers, 0);
+    // txns to remove from the txn pool in case longest chain changes
     vector<Transaction*> txns_to_remove;
     while (branch_block->depth > current_block->depth)
         branch_block = Blockchain::backward(branch_block, branch_balance_change, txns_to_remove);
@@ -380,6 +387,7 @@ void Peer::receive_block(Simulator* sim, Peer* sender, Block* block) {
     }
 }
 
+/* output the edges in blockchain in os and update deepest_block */
 void Peer::traverse_blockchain(Block* b, ostream& os, Block*& deepest_block, vector<int>& total_blocks) {
     // for canonicalization
     sort(all(b->next), [](Block* a1, Block* a2) {
@@ -388,7 +396,7 @@ void Peer::traverse_blockchain(Block* b, ostream& os, Block*& deepest_block, vec
     if (b->depth > deepest_block->depth)
         deepest_block = b;
 
-    // genesis id is -1
+    // genesis id is -2
     if (b->parent_id >= -1) 
         total_blocks[b->owner->id]++;
     
@@ -398,6 +406,7 @@ void Peer::traverse_blockchain(Block* b, ostream& os, Block*& deepest_block, vec
     }
 }
 
+/* output the arrival times of blocks to os */
 void Peer::export_arrival_times(ostream& os) {
     os << get_name() << '\n';
     for (pair<Block*, ld>& p : block_arrival_times) {
@@ -414,6 +423,7 @@ void Peer::export_arrival_times(ostream& os) {
     os << '\n';
 }
 
+/* output the final statistics to a file */
 void Peer::analyse_and_export_blockchain(Simulator* sim) {
     string filename = "output/blockchain_edgelist.txt";
     ofstream outfile(filename);

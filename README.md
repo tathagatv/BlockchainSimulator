@@ -4,6 +4,7 @@
 
 ### Requirements
 - Simulation
+    - Make `(Optional) (See below)`
     - C++17 `Tested on GNU C++ (Ubuntu 20.04) and MinGW (Windows)`
 - Visualization and Statistics
     - Python 3 `Recommended Python >= 3.6`

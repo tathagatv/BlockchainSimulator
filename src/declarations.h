@@ -226,7 +226,7 @@ public:
 
 	void traverse_blockchain(Block* b, ostream& os, Block*& deepest_block, vector<int>& total_blocks);
 	void export_arrival_times(ostream& os);
-	void analyse_and_export_blockchain();
+	void analyse_and_export_blockchain(Simulator* sim);
 };
 
 // ====================================================================== //

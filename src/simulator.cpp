@@ -33,85 +33,83 @@ void Simulator::get_new_peers() {
         peers[i].is_fast = true;
 
     random_shuffle(peers);
-    for (int i = 0; i < n; i++) {
+    for (int i = 0; i < n; i++)
         peers[i].id = Peer::counter++;
-    }
 
     // create hash power distribution
     vector<ld> hash_power_distribution(n);
-    ld hash_power_norma = 0;
-    for (int i = 0; i < n; i++){
-        hash_power_distribution[i] = exp(-pow((i-n/2.0), 2)/(2*pow(Hvar, 2)));
-        hash_power_norma += hash_power_distribution[i];
+    ld normalization_factor = 0;
+    for (int i = 0; i < n; i++) {
+        hash_power_distribution[i] = exp(-pow((i - n / 2.0), 2) / (2 * pow(Hvar, 2)));
+        normalization_factor += hash_power_distribution[i];
     }
     for (int i = 0; i < n; i++)
-        peers[i].initialize_block_mining_distribution(hash_power_distribution[i]/hash_power_norma);
+        peers[i].initialize_block_mining_distribution(hash_power_distribution[i] / normalization_factor);
     
 }
 
 void Simulator::form_random_network() {
     assert(edges >= n - 1);
     int n = peers.size();
+    assert(n >= 2);
     uniform_int_distribution<int> unif(0, n - 1);
- 
+
     // preferential attachment algorithm - scale free network
     int node_1 = unif(rng64);
     int node_2 = unif(rng64);
-    while(node_2==node_1){
+    while (node_2 == node_1)
         node_2 = unif(rng64);
-    }
+
+    if (node_1 > node_2)
+        swap(node_1, node_2);
 
     set<int> s, t;
-    for(int i=0; i<n; i++){
+    for (int i = 0; i < n; i++)
         s.insert(i);
-    }
 
-    s.erase(node_1);
-    s.erase(node_2);
-    t.insert(node_1);
-    t.insert(node_2);
+    s.erase(node_1), t.insert(node_1);
+    s.erase(node_2), t.insert(node_2);
 
     set<pair<int, int>> edges_log;
 
+    vector<int> degrees(n, 0);
     Peer::add_edge(&peers[node_1], &peers[node_2]);
     edges_log.insert(make_pair(node_1, node_2));
-    edges--;
+    edges--, degrees[node_1]++, degrees[node_2]++;
 
     while (!s.empty()) {
         int next_node = unif(rng64);
         if (t.find(next_node) == t.end()) {
-            vector<int> prob(n, 0);
-            for(int i=0; i<n; i++){
-                prob[i] = peers[i].get_degree();
-            }
-            discrete_distribution<int> disc(prob.begin(), prob.end());
+            discrete_distribution<int> disc(degrees.begin(), degrees.end());
             int neighbour_node = disc(rng64);
-            while(neighbour_node==next_node){
+            while (neighbour_node == next_node)
                 neighbour_node = disc(rng64);
-            }
-            Peer::add_edge(&peers[next_node], &peers[neighbour_node]);
-            edges_log.insert(make_pair(next_node, neighbour_node));
+
             s.erase(next_node);
             t.insert(next_node);
-            edges--;
+            
+            if (next_node > neighbour_node)
+                swap(next_node, neighbour_node);
+
+            Peer::add_edge(&peers[next_node], &peers[neighbour_node]);
+            edges_log.insert(make_pair(next_node, neighbour_node));
+            edges--, degrees[next_node]++, degrees[neighbour_node]++;
         }
     }
     
     set<pair<int, int>>::iterator it;
     while (edges > 0) {
         int a = unif(rng64);
-        vector<int> prob(n, 0);
-        for(int i=0; i<n; i++){
-            prob[i] = peers[i].get_degree();
-        }
-        discrete_distribution<int> disc(prob.begin(), prob.end());
+        discrete_distribution<int> disc(degrees.begin(), degrees.end());
         int b = disc(rng64);
-        while(b==a){
+        while (b == a)
             b = disc(rng64);
-        }
-        if(!edges_log.count(make_pair(a, b)) && !edges_log.count(make_pair(b, a))){
+
+        if (a > b) swap(a, b);
+
+        if (!edges_log.count(make_pair(a, b))) {
             Peer::add_edge(&peers[a], &peers[b]);
-            edges--;
+            edges--, degrees[a]++, degrees[b]++;
         }
     }
 }
@@ -188,9 +186,9 @@ void Simulator::complete_non_generate_events() {
 
         delete_event(current_event);
     }
-    peers[0].analyse_and_export_blockchain();
+    peers[0].analyse_and_export_blockchain(this);
     for (Peer& p : peers){
-        string filename = "output/block_arrivals_" + to_string(p.id+1) + ".txt";
+        string filename = "output/block_arrivals/" + p.get_name() + ".txt";
         ofstream outfile(filename);
         p.export_arrival_times(outfile);
         outfile.close();

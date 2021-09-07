@@ -11,7 +11,7 @@ int main(int argc, char *argv[]) {
 	argparse::ArgumentParser argparser("./blockchain_simulator", "1.0");
 
 	argparser.add_argument("--peers", "-n")
-	.default_value((int)40)
+	.default_value((int)20)
 	.required()
 	.help("Number of peers in the network")
 	.action([](const string& value) { return stoi(value); });
@@ -41,7 +41,7 @@ int main(int argc, char *argv[]) {
 	.action([](const string& value) { return stold(value); });
 
 	argparser.add_argument("--mining_time", "-Tk")
-	.default_value((ld)24000.0)
+	.default_value((ld)1000.0)
 	.required()
 	.help("Mean of exponential distribution of time to mine a block")
 	.action([](const string& value) { return stold(value); });
@@ -65,7 +65,7 @@ int main(int argc, char *argv[]) {
 	.action([](const string& value) { return stoi(value); });
 
 	argparser.add_argument("--max_blocks", "-blk")
-	.default_value((int)200)
+	.default_value((int)300)
 	.required()
 	.help("Run simulation till max blocks are generated, 0 indicates infinity")
 	.action([](const string& value) { return stoi(value); });

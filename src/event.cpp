@@ -73,7 +73,7 @@ void BroadcastMinedBlock::run(Simulator* sim) {
 		validity = "VALID";
 	}
 	sim->log(cout, owner->get_name() + " mines and broadcasts " + validity + " block " + block->get_name());
-    owner->block_arrival_times.emplace_back(make_pair(block->clone(), sim->current_timestamp));
+    owner->block_arrival_times.emplace_back(make_pair(block, sim->current_timestamp));
 
 	Event* ev = new ForwardBlock(0, owner, owner, block->clone());
 	sim->add_event(ev);

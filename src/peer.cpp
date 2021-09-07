@@ -26,7 +26,7 @@ Peer::Peer() {
 
 void Peer::initialize_block_mining_distribution(ld hash_power){
     this->hash_power = hash_power;
-    block_mining_time = exponential_distribution<ld>(1.0 / (Tk*hash_power));
+    block_mining_time = exponential_distribution<ld>(hash_power / Tk);
 }
 
 string Peer::get_name() {
@@ -68,6 +68,7 @@ Transaction* Peer::generate_transaction(Simulator* sim) {
         uniform_int_distribution unif_coins_dist(1, cur_balance);
         coins = unif_coins_dist(rng64);
     }
+    Transaction* txn = NULL;
 
     if (coins > 0) {
         // todo: check if uniform distribution is correct for sampling receiver & no of coins
@@ -75,7 +76,7 @@ Transaction* Peer::generate_transaction(Simulator* sim) {
         while (receiver == id)
             receiver = unif_dist_peer(rng64);
 
-        Transaction *txn = new Transaction(sim->current_timestamp, this, &sim->peers[receiver], coins);
+        txn = new Transaction(sim->current_timestamp, this, &sim->peers[receiver], coins);
 
         // todo: add transaction in transaction/recv pool
         recv_pool.insert(txn->id);
@@ -84,16 +85,10 @@ Transaction* Peer::generate_transaction(Simulator* sim) {
         // forward the transaction to peers
         Event* ev = new ForwardTransaction(0, this, this, txn);
         sim->add_event(ev);
-
-        // generate new transaction
-        schedule_next_transaction(sim);
-        
-        return txn;
-    } else {
-        // generate new transaction
-        schedule_next_transaction(sim);
-        return NULL;
     }
+    // generate new transaction
+    schedule_next_transaction(sim);
+    return txn;
 }
 
 void Peer::forward_transaction(Simulator* sim, Peer* source, Transaction* txn) {
@@ -218,13 +213,16 @@ void Peer::delete_invalid_free_blocks(Block* block, Simulator* sim) {
     rejected_blocks.insert(block->id);
     sim->log(cout, get_name() + " REJECTS block " + block->get_name());
     
-    delete block;
+    // dont delete block to maintain block arrivals consistency
+    // delete block;
 
     if (it == free_block_parents.end()) 
         return;
 
     // recursive call to delete child blocks
     for (Block* child : it->second) {
+        assert(child->parent == NULL);
+        child->set_parent(block);
         free_blocks.erase(child->id);
         delete_invalid_free_blocks(child, sim);
     }
@@ -282,7 +280,7 @@ void Peer::receive_block(Simulator* sim, Peer* sender, Block* block) {
     if (chain_it != chain_blocks.end() || free_it != free_blocks.end() || reject_it != rejected_blocks.end()) 
         return;
 
-    block_arrival_times.emplace_back(make_pair(block->clone(), sim->current_timestamp));
+    block_arrival_times.emplace_back(make_pair(block, sim->current_timestamp));
     // forward every received block regardless of validity
     Event* ev = new ForwardBlock(0, this, sender, block->clone());
     sim->add_event(ev);
@@ -376,7 +374,8 @@ void Peer::traverse_blockchain(Block* b, ostream& os, Block*& deepest_block, vec
     if (b->depth > deepest_block->depth)
         deepest_block = b;
 
-    if (b->parent_id >= 0)
+    // genesis id is -1
+    if (b->parent_id >= -1) 
         total_blocks[b->owner->id]++;
     
     for (Block* c : b->next) {
@@ -401,21 +400,18 @@ void Peer::export_arrival_times(ostream& os) {
     os << '\n';
 }
 
-void Peer::analyse_and_export_blockchain() {
+void Peer::analyse_and_export_blockchain(Simulator* sim) {
     string filename = "output/blockchain_edgelist_" + to_string(id) + ".txt";
     ofstream outfile(filename);
     Block* deepest_block = blockchain.genesis;
     vector<int> total_blocks(total_peers, 0);
     traverse_blockchain(blockchain.genesis, outfile, deepest_block, total_blocks);
-    // cout << deepest_block << endl;
     outfile.close();
     
     vector<int> blocks_in_chain(total_peers, 0);
     while (deepest_block->id != blockchain.genesis->id) {
         blocks_in_chain[deepest_block->owner->id]++;
-        // cout << deepest_block->id << endl;
         deepest_block = deepest_block->parent;
-        // cout << deepest_block->id << endl;
     }
 
     filename = "output/blocks_each_peer_" + to_string(id) + ".txt";
@@ -424,7 +420,7 @@ void Peer::analyse_and_export_blockchain() {
         outfile << (i + 1) << '\t';
         outfile << blocks_in_chain[i] << " / ";
         outfile << total_blocks[i] << '\t';
-        outfile << Simulator::peers[i].hash_power << "\n";
+        outfile << sim->peers[i].hash_power << "\n";
     }
     outfile.close();
 }

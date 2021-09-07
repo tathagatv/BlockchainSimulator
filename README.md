@@ -1,6 +1,6 @@
 # Simulation of a P2P Cryptocurrency Network
 
-## Guide: Prof. Vinay Rebeiro, CS 765, IIT Bombay 
+## Guide: Prof. Vinay Ribeiro, CS 765, IIT Bombay 
 
 ### Requirements
 - Simulation

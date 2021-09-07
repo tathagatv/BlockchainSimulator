@@ -8,45 +8,57 @@ ld Peer::Tk;
 ld Peer::Hvar;
 vector<Peer> Simulator::peers;
 
+/* constructor */
 Peer::Peer() {
+    // initializa balances of all peers with 0
     balances.assign(total_peers, 0);
     assert(Ttx > 0);
     assert(Tk > 0);
-    // avg of expo dist = 1/lambda
     degree = 0;
+    // avg of expo dist = 1/lambda
     txn_interarrival_time = exponential_distribution<ld>(1.0 / Ttx);
     unif_dist_peer = uniform_int_distribution<int>(0, total_peers - 1);
     unif_rand_real = uniform_real_distribution<ld>(0, 1);
 
     blockchain = Blockchain();
+    // add genesis block in chain_blocks
     chain_blocks[blockchain.current_block->id] = blockchain.current_block;
 
     block_arrival_times.emplace_back(make_pair(blockchain.genesis, 0));
 
+    /* create hash power distribution: 50% with low hash power (0.1) 
+        and remaining 50% with high hash power (0.5) */
     hash_power = (unif_rand_real(rng64) < 0.5) ? 0.1 : 0.5;
 }
 
+/* update hash power to normalized value and initialize block mining distribution */
 void Peer::initialize_block_mining_distribution(ld hash_power){
     this->hash_power = hash_power;
+    // more hash power: less Tk
     block_mining_time = exponential_distribution<ld>(hash_power / Tk);
 }
 
+/* returns the name of this peer */
 string Peer::get_name() {
     return "Peer" + to_string(id + 1);
 }
 
+/* returns the degree for this peer */
 int Peer::get_degree() {
     return degree;
 }
 
-// adds a link between peer a and peer b
+/* creates a link between peer a and peer b */
 void Peer::add_edge(Peer *a, Peer *b) {
+    // increase the degree
     a->degree++;
     b->degree++;
 
+    // add b in a's adj list
     Link ab(b, a->is_fast);
     (a->adj).emplace_back(ab);
 
+    // add a in b's adj list
     Link ba(a, b->is_fast);
     (b->adj).emplace_back(ba);
 }

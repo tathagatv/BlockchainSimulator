@@ -3,7 +3,8 @@ using namespace std;
 
 Simulator::Simulator(int n_, ld z_, ld Ttx_, ld Tk_, ld Hvar_, int edges_, bool verbose_, ld invalid_txn_prob_, ld invalid_block_prob_) {
     n = n_;
-    z_ = min((ld)1, max(z_, (ld)0));
+    // ensure z (fraction of slow peers) is between 0 and 1
+    z_ = min((ld)1, max(z_, (ld)0)); 
     slow_peers = z_ * n;
     Ttx = Ttx_; Tk = Tk_; Hvar = Hvar_;
     edges = edges_;
@@ -14,7 +15,7 @@ Simulator::Simulator(int n_, ld z_, ld Ttx_, ld Tk_, ld Hvar_, int edges_, bool 
     has_simulation_ended = false;
 
     Transaction::counter = 0;
-    Block::max_size = 1000;
+    Block::max_size = MAX_BLOCK_SIZE; // 1000 KB
     Block::counter = 0;
     Blockchain::global_genesis = new Block(NULL);
     Blockchain::global_genesis->set_parent(NULL);
@@ -25,6 +26,7 @@ Simulator::Simulator(int n_, ld z_, ld Ttx_, ld Tk_, ld Hvar_, int edges_, bool 
     Peer::Hvar = Hvar;
 }
 
+/* initialize peers */
 void Simulator::get_new_peers() {
     peers.resize(n);
     for (int i = 0; i < slow_peers; i++)
@@ -36,7 +38,7 @@ void Simulator::get_new_peers() {
     for (int i = 0; i < n; i++)
         peers[i].id = Peer::counter++;
 
-    // create hash power distribution
+    // normalization factor: to normalize the hash power
     ld normalization_factor = 0;
     for (Peer& p : peers)
         normalization_factor += p.hash_power;
@@ -44,6 +46,7 @@ void Simulator::get_new_peers() {
         p.initialize_block_mining_distribution(p.hash_power / normalization_factor);
 }
 
+/* generate scale free network between the peers */
 void Simulator::form_random_network() {
     assert(edges >= n - 1);
     int n = peers.size();
@@ -59,7 +62,10 @@ void Simulator::form_random_network() {
     if (node_1 > node_2)
         swap(node_1, node_2);
 
-    set<int> s, t;
+    // s: nodes not yet added in network 
+    // t: nodes already added in network
+    set<int> s, t; 
+
     for (int i = 0; i < n; i++)
         s.insert(i);
 
@@ -68,11 +74,12 @@ void Simulator::form_random_network() {
 
     set<pair<int, int>> edges_log;
 
+    // add edge between node_1 and node_2
     vector<int> degrees(n, 0);
     Peer::add_edge(&peers[node_1], &peers[node_2]);
     edges_log.insert(make_pair(node_1, node_2));
-    edges--, degrees[node_1]++, degrees[node_2]++;
-
+    edges--;
+    
     while (!s.empty()) {
         int next_node = unif(rng64);
         if (t.find(next_node) == t.end()) {

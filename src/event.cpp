@@ -2,15 +2,23 @@
 using namespace std;
 
 // ======================================================================= //
+/* constructor */
 Event::Event(ld timestamp_) {
     timestamp = timestamp_;
-	is_generate_type_event = false;
+	is_generate_type_event = false; // default value false
 }
 
+/* compare based on timestamp */
 bool Event::operator<(const Event& other) {
-    return timestamp < other.timestamp;
+    if (timestamp != other.timestamp){
+		return timestamp < other.timestamp;
+	}else{
+		// two different events with same timestamp should not be considered as equal
+		return this < &other;
+	}
 }
 
+/* execute the event, definition in derived classes */
 void Event::run(Simulator* sim) {
 	assert(false);
 }

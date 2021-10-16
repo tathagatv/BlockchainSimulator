@@ -18,3 +18,4 @@
 # ignore useless
 .vscode
 build
+output

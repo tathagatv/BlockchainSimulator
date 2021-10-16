@@ -58,21 +58,26 @@ def calc_graph_stats(G):
 
 
 base = os.path.join(dirname(dirname(abspath(__file__))), 'output')
+edgelist_files = [f for f in os.listdir(base) if "blockchain_edgelist" in f]
 
-with open(os.path.join(base, 'blockchain_edgelist.txt'), 'r') as fp:
-    edges = [l.strip().split() for l in fp.readlines() if l.strip()]
-    edges = [(int(u), int(v)) for u, v in edges]
-G = nx.DiGraph(edges)
-outfile = os.path.join(base, f'blockchain_image.png')
-draw_blockchain(G, outfile)
-max_depth, branch_lengths = calc_graph_stats(G)
-print('Total blocks in Blockchain:', len(G.nodes()))
-print('Longest chain length:', max_depth)
-print('Longest chain length / total number of blocks: %.3f' % (max_depth / len(G.nodes())))
-if len(branch_lengths) > 0:
-    print(f'Branch Lengths: Total={len(branch_lengths)}, Max={branch_lengths.max()}, Mean={branch_lengths.mean():.3f}, Min={branch_lengths.min()}')
-else:
-    print('No branches created')
+for filename in ["blockchain_edgelist_Peer1.txt","blockchain_edgelist_Peer40.txt"]:
+    with open(os.path.join(base, filename), 'r') as fp:
+        edges = [l.strip().split() for l in fp.readlines() if l.strip()]
+        edges = [(int(u), int(v)) for u, v in edges]
+    G = nx.DiGraph(edges)
+    filename = filename.replace("edgelist","img")
+    filename = filename.replace("txt","png")
+    outfile = os.path.join(base, filename)
+    draw_blockchain(G, outfile)
+
+# max_depth, branch_lengths = calc_graph_stats(G)
+# print('Total blocks in Blockchain:', len(G.nodes()))
+# print('Longest chain length:', max_depth)
+# print('Longest chain length / total number of blocks: %.3f' % (max_depth / len(G.nodes())))
+# if len(branch_lengths) > 0:
+#     print(f'Branch Lengths: Total={len(branch_lengths)}, Max={branch_lengths.max()}, Mean={branch_lengths.mean():.3f}, Min={branch_lengths.min()}')
+# else:
+#     print('No branches created')
 print()
 
 df = pd.read_csv(os.path.join(base, 'peer_attributes.txt'), index_col='id')

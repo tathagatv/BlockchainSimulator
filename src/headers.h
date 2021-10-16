@@ -32,7 +32,6 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
-#include "trace.h"
 using namespace std;
 
 typedef long long ll;

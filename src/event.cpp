@@ -68,25 +68,7 @@ BroadcastMinedBlock::BroadcastMinedBlock(ld timestamp, Peer* p) : Event(timestam
 }
 
 void BroadcastMinedBlock::run(Simulator* sim) {
-	Block* block = owner->next_mining_block;
-	block->set_id();
-	
-	assert(owner->blockchain.current_block->id == block->parent->id);
-	bool is_valid = owner->validate_block(block, owner->balances);
-
-	// do not add invalid block, only transmit it to other peers
-	string validity = "INVALID";
-	if (is_valid) {
-		owner->add_block(block, true);
-		validity = "VALID";
-	}
-	sim->log(cout, owner->get_name() + " mines and broadcasts " + validity + " block " + block->get_name());
-    owner->block_arrival_times.emplace_back(make_pair(block, sim->current_timestamp));
-
-	Event* ev = new ForwardBlock(0, owner, owner, block->clone());
-	sim->add_event(ev);
-
-	owner->schedule_next_block(sim);
+	owner->broadcast_mined_block(sim);
 }
 
 // ======================================================================= //

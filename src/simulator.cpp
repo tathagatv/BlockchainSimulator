@@ -1,7 +1,7 @@
 #include "declarations.h"
 using namespace std;
 
-Simulator::Simulator(int n_, ld z_, ld Ttx_, ld Tk_, int edges_, bool verbose_, ld invalid_txn_prob_, ld invalid_block_prob_) {
+Simulator::Simulator(int n_, ld z_, ld Ttx_, ld Tk_, int edges_, bool verbose_, ld invalid_txn_prob_, ld invalid_block_prob_, ld zeta_, string adversary_) {
     n = n_;
     // ensure z (fraction of slow peers) is between 0 and 1
     z_ = min((ld)1, max(z_, (ld)0)); 
@@ -13,6 +13,8 @@ Simulator::Simulator(int n_, ld z_, ld Ttx_, ld Tk_, int edges_, bool verbose_, 
     invalid_block_prob = invalid_block_prob_;
     verbose = verbose_;
     has_simulation_ended = false;
+    zeta = zeta_;
+    adversary = adversary_;
 
     Transaction::counter = 0;
     Block::max_size = MAX_BLOCK_SIZE; // 1000 KB
@@ -34,8 +36,23 @@ void Simulator::get_new_peers() {
         peers[i].is_fast = true;
 
     random_shuffle(peers);
+
+    if(adversary!="none"){
+        peers.pop_back();   
+        if(adversary=="selfish"){
+            SelfishAttacker sea;
+            peers.push_back(sea);
+        }else{
+            StubbornAttacker sba;
+            peers.push_back(sba);
+        }
+        peers[n-1].is_fast = true;
+        peers[n-1].hash_power = VERY_HIGH_HASH_POWER;
+    }
+
     for (int i = 0; i < n; i++)
         peers[i].id = Peer::counter++;
+
 
     // normalization factor: to normalize the hash power
     ld normalization_factor = 0;
@@ -49,6 +66,11 @@ void Simulator::get_new_peers() {
 void Simulator::form_random_network() {
     assert(edges >= n - 1);
     int n = peers.size();
+
+    if(adversary!="none"){
+        n-=1;
+    }
+
     assert(n >= 2);
     uniform_int_distribution<int> unif(0, n - 1);
 
@@ -114,6 +136,25 @@ void Simulator::form_random_network() {
             edges--, degrees[a]++, degrees[b]++;
         }
     }
+
+    if(adversary!="none"){
+
+        // add edges to adversary 
+        edges = (int)(zeta*n);
+
+        n+=1;
+        while (edges > 0) {
+            int a = unif(rng64);
+            int b = n-1;
+
+            if (!edges_log.count(make_pair(a, b))) {
+                Peer::add_edge(&peers[a], &peers[b]);
+                edges--, degrees[a]++, degrees[b]++;
+            }
+        }
+    
+    }
+
 }
 
 void Simulator::init_events() {
@@ -188,8 +229,8 @@ void Simulator::complete_non_generate_events() {
 
         delete_event(current_event);
     }
-    peers[0].analyse_and_export_blockchain(this);
     for (Peer& p : peers){
+        p.analyse_and_export_blockchain(this);
         string filename = "output/block_arrivals/" + p.get_name() + ".txt";
         ofstream outfile(filename);
         p.export_arrival_times(outfile);

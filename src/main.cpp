@@ -5,7 +5,6 @@
 mt19937 rng(chrono::steady_clock::now().time_since_epoch().count());
 mt19937_64 rng64(chrono::steady_clock::now().time_since_epoch().count());
 
-
 int main(int argc, char *argv[]) {
 	
 	// https://github.com/p-ranav/argparse
@@ -82,6 +81,22 @@ int main(int argc, char *argv[]) {
 	.help("Probability of generating an invalid block")
 	.action([](const string& value) { return stold(value); });
 
+	argparser.add_argument("--attacker_connection", "-zeta")
+	.default_value((ld)0.5)
+	.help("Fraction of honest nodes adversary is connected to")
+	.action([](const string& value) { return stold(value); });
+
+	argparser.add_argument("--adversary_type", "-adv")
+	.default_value("none")
+	.help("Type of adversary")
+	.action([](const string& value) { 
+		static const vector<string> choices = { "none", "selfish", "stubborn" };
+		if (std::find(choices.begin(), choices.end(), value) != choices.end()) {
+			return value;
+		}
+		return std::string{ "none" };
+	});
+
 	argparser.parse_args(argc, argv);
 
 	ld z = argparser.get<ld>("-z");
@@ -96,11 +111,13 @@ int main(int argc, char *argv[]) {
 	bool verbose = argparser.get<bool>("-v");
 	ld invalid_txn_prob = argparser.get<ld>("-it");
 	ld invalid_block_prob = argparser.get<ld>("-ib");
+	ld zeta = argparser.get<ld>("-zeta");
+	string adv = argparser.get<string>("-adv");
 
 	rng.seed(seed);
 	rng64.seed(seed);
 
-	Simulator simulator(n, z, Ttx, Tk, edges, verbose, invalid_txn_prob, invalid_block_prob);
+	Simulator simulator(n, z, Ttx, Tk, edges, verbose, invalid_txn_prob, invalid_block_prob, zeta, adv);
 	simulator.run(t, max_txns, max_blocks);
 
 	return 0;

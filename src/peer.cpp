@@ -27,7 +27,7 @@ Peer::Peer() {
 
     /* create hash power distribution: 50% with low hash power (0.1) 
         and remaining 50% with high hash power (0.5) */
-    hash_power = (unif_rand_real(rng64) < 0.5) ? 0.1 : 0.5;
+    hash_power = (unif_rand_real(rng64) < 0.5) ? LOW_HASH_POWER : HIGH_HASH_POWER;
 }
 
 /* update hash power to normalized value and initialize block mining distribution */
@@ -187,6 +187,28 @@ void Peer::schedule_next_block(Simulator* sim) {
     ld miningTime = block_mining_time(rng64);
     next_mining_event = new BroadcastMinedBlock(miningTime, this);
     sim->add_event(next_mining_event);
+}
+
+void Peer::broadcast_mined_block(Simulator *sim){
+    Block* block = next_mining_block;
+	block->set_id();
+	
+	assert(blockchain.current_block->id == block->parent->id);
+	bool is_valid = validate_block(block, balances);
+
+	// do not add invalid block, only transmit it to other peers
+	string validity = "INVALID";
+	if (is_valid) {
+		add_block(block, true);
+		validity = "VALID";
+	}
+	sim->log(cout, get_name() + " mines and broadcasts " + validity + " block " + block->get_name());
+    block_arrival_times.emplace_back(make_pair(block, sim->current_timestamp));
+
+	Event* ev = new ForwardBlock(0, this, this, block->clone());
+	sim->add_event(ev);
+
+	schedule_next_block(sim);
 }
 
 void Peer::forward_block(Simulator* sim, Peer* source, Block* block) {
@@ -424,7 +446,7 @@ void Peer::export_arrival_times(ostream& os) {
 
 /* output the final statistics to a file */
 void Peer::analyse_and_export_blockchain(Simulator* sim) {
-    string filename = "output/blockchain_edgelist.txt";
+    string filename = "output/blockchain_edgelist_"+get_name()+".txt";
     ofstream outfile(filename);
     Block* deepest_block = blockchain.genesis;
     vector<int> total_blocks(total_peers, 0);
@@ -437,6 +459,7 @@ void Peer::analyse_and_export_blockchain(Simulator* sim) {
         deepest_block = deepest_block->parent;
     }
 
+    if(id!=0) return; // this part should execute only once
     filename = "output/peer_attributes.txt";
     outfile = ofstream(filename);
     outfile << "id,chain_blocks,generated_blocks,is_fast,hash_power\n";

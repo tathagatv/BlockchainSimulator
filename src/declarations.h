@@ -14,6 +14,9 @@ extern mt19937_64 rng64;
 #define MAX_BLOCK_SIZE 1000 // 1000 KB
 #define START_TIME 0
 #define MINING_FEE 50
+#define LOW_HASH_POWER 0.1
+#define HIGH_HASH_POWER 0.5
+#define VERY_HIGH_HASH_POWER 1.0
 
 // Forward declarations
 class Transaction; 
@@ -28,6 +31,8 @@ class ReceiveBlock;
 class ForwardBlock; 
 class BroadcastMinedBlock; 
 class Peer; 
+class SelfishAttacker;
+class StubbornAttacker;
 class Simulator; 
 
 // ======================================================================= //
@@ -266,9 +271,24 @@ public:
 	void forward_block(Simulator* sim, Peer* source, Block* block); 
 	void receive_block(Simulator* sim, Peer* sender, Block* block);
 
+	void broadcast_mined_block(Simulator* sim);
+
 	void traverse_blockchain(Block* b, ostream& os, Block*& deepest_block, vector<int>& total_blocks);
 	void export_arrival_times(ostream& os);
 	void analyse_and_export_blockchain(Simulator* sim);
+};
+
+// ====================================================================== //
+class SelfishAttacker : public Peer {
+	Block* generate_new_block(Simulator* sim);
+	void receive_block(Simulator* sim, Peer* sender, Block* block);
+	void broadcast_mined_block(Simulator* sim);
+};
+
+class StubbornAttacker : public Peer {
+	Block* generate_new_block(Simulator* sim);
+	void receive_block(Simulator* sim, Peer* sender, Block* block);
+	void broadcast_mined_block(Simulator* sim);
 };
 
 // ====================================================================== //
@@ -303,8 +323,12 @@ public:
 	bool verbose;
 	/* true after end_time */
 	bool has_simulation_ended;
+	/* fraction of honest nodes the adversary is connected to */
+	ld zeta;
+	/* adversary type */
+	string adversary;
 
-	Simulator(int n_, ld z_, ld Ttx_, ld Tk_, int edges_, bool verbose_, ld invalid_txn_prob_, ld invalid_block_prob_);	
+	Simulator(int n_, ld z_, ld Ttx_, ld Tk_, int edges_, bool verbose_, ld invalid_txn_prob_, ld invalid_block_prob_, ld zeta_, string adversary_);
 	void get_new_peers();
 	void form_random_network();
 	void init_events();
@@ -316,3 +340,4 @@ public:
 };
 
 #endif
+

@@ -10,7 +10,7 @@ extern mt19937_64 rng64;
 // Use mt19937_64 for 64 bit random numbers.
 
 // constants
-#define TRANSACTION_SIZE 1 // 1 KB
+#define TRANSACTION_SIZE 1 // 1 KB	
 #define MAX_BLOCK_SIZE 1000 // 1000 KB
 #define START_TIME 0
 #define MINING_FEE 50
@@ -249,6 +249,7 @@ public:
 	vector<pair<Block*, ld>> block_arrival_times;
 
 	Peer();
+	virtual ~Peer(){};
 	static void add_edge(Peer* a, Peer* b);
 	void initialize_block_mining_distribution(ld hash_power);
 	int get_degree();
@@ -265,13 +266,13 @@ public:
 
 	bool validate_txn(Transaction* txn, vector<int>& custom_balances);
 	bool validate_block(Block* block, vector<int>& custom_balances);
-	Block* generate_new_block(Simulator* sim);
+	virtual Block* generate_new_block(Simulator* sim);
 	void schedule_next_block(Simulator* sim);
 
 	void forward_block(Simulator* sim, Peer* source, Block* block); 
-	void receive_block(Simulator* sim, Peer* sender, Block* block);
+	virtual void receive_block(Simulator* sim, Peer* sender, Block* block);
 
-	void broadcast_mined_block(Simulator* sim);
+	virtual void broadcast_mined_block(Simulator* sim);
 
 	void traverse_blockchain(Block* b, ostream& os, Block*& deepest_block, vector<int>& total_blocks);
 	void export_arrival_times(ostream& os);
@@ -318,7 +319,7 @@ public:
 	Event* current_event;
 	/* stores events sorted as per timestamp */
 	set<Event*, EventPtrComp> events;
-	static vector<Peer> peers;
+	static vector<Peer*> peers;
 	/* prints logs if true */
 	bool verbose;
 	/* true after end_time */
@@ -329,6 +330,7 @@ public:
 	string adversary;
 
 	Simulator(int n_, ld z_, ld Ttx_, ld Tk_, int edges_, bool verbose_, ld invalid_txn_prob_, ld invalid_block_prob_, ld zeta_, string adversary_);
+	~Simulator();
 	void get_new_peers();
 	void form_random_network();
 	void init_events();

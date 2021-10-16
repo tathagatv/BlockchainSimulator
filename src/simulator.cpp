@@ -27,39 +27,47 @@ Simulator::Simulator(int n_, ld z_, ld Ttx_, ld Tk_, int edges_, bool verbose_, 
     Peer::Tk = Tk;
 }
 
+Simulator::~Simulator(){
+    for(int i=0; i<n; i++){
+        delete peers[i];
+    }
+}
+
 /* initialize peers */
 void Simulator::get_new_peers() {
     peers.resize(n);
+    for(int i=0; i<n; i++){
+        peers[i] = new Peer;
+    }
     for (int i = 0; i < slow_peers; i++)
-        peers[i].is_fast = false;
+        peers[i]->is_fast = false;
     for (int i = slow_peers; i < n; i++)
-        peers[i].is_fast = true;
+        peers[i]->is_fast = true;
 
     random_shuffle(peers);
 
     if(adversary!="none"){
+        delete peers[n-1];
         peers.pop_back();   
         if(adversary=="selfish"){
-            SelfishAttacker sea;
-            peers.push_back(sea);
+            peers.push_back(new SelfishAttacker);
         }else{
-            StubbornAttacker sba;
-            peers.push_back(sba);
+            peers.push_back(new StubbornAttacker);
         }
-        peers[n-1].is_fast = true;
-        peers[n-1].hash_power = VERY_HIGH_HASH_POWER;
+        peers[n-1]->is_fast = true;
+        peers[n-1]->hash_power = HIGH_HASH_POWER*(n/3);
     }
 
     for (int i = 0; i < n; i++)
-        peers[i].id = Peer::counter++;
+        peers[i]->id = Peer::counter++;
 
 
     // normalization factor: to normalize the hash power
     ld normalization_factor = 0;
-    for (Peer& p : peers)
-        normalization_factor += p.hash_power;
-    for (Peer& p : peers)
-        p.initialize_block_mining_distribution(p.hash_power / normalization_factor);
+    for (Peer* p : peers)
+        normalization_factor += p->hash_power;
+    for (Peer* p : peers)
+        p->initialize_block_mining_distribution(p->hash_power / normalization_factor);
 }
 
 /* generate scale free network between the peers */
@@ -97,7 +105,7 @@ void Simulator::form_random_network() {
 
     // add edge between node_1 and node_2
     vector<int> degrees(n, 0);
-    Peer::add_edge(&peers[node_1], &peers[node_2]);
+    Peer::add_edge(peers[node_1], peers[node_2]);
     edges_log.insert(make_pair(node_1, node_2));
     edges--, degrees[node_1]++, degrees[node_2]++;
 
@@ -115,7 +123,7 @@ void Simulator::form_random_network() {
             if (next_node > neighbour_node)
                 swap(next_node, neighbour_node);
 
-            Peer::add_edge(&peers[next_node], &peers[neighbour_node]);
+            Peer::add_edge(peers[next_node], peers[neighbour_node]);
             edges_log.insert(make_pair(next_node, neighbour_node));
             edges--, degrees[next_node]++, degrees[neighbour_node]++;
         }
@@ -132,7 +140,7 @@ void Simulator::form_random_network() {
         if (a > b) swap(a, b);
 
         if (!edges_log.count(make_pair(a, b))) {
-            Peer::add_edge(&peers[a], &peers[b]);
+            Peer::add_edge(peers[a], peers[b]);
             edges--, degrees[a]++, degrees[b]++;
         }
     }
@@ -148,7 +156,7 @@ void Simulator::form_random_network() {
             int b = n-1;
 
             if (!edges_log.count(make_pair(a, b))) {
-                Peer::add_edge(&peers[a], &peers[b]);
+                Peer::add_edge(peers[a], peers[b]);
                 edges--, degrees[a]++, degrees[b]++;
             }
         }
@@ -158,9 +166,9 @@ void Simulator::form_random_network() {
 }
 
 void Simulator::init_events() {
-    for (Peer& peer : peers) {
-        peer.schedule_next_transaction(this);
-        peer.schedule_next_block(this);
+    for (Peer* peer : peers) {
+        peer->schedule_next_transaction(this);
+        peer->schedule_next_block(this);
     }
 }
 
@@ -213,9 +221,9 @@ void Simulator::run(ld end_time_, int max_txns_, int max_blocks_) {
 void Simulator::complete_non_generate_events() {
     has_simulation_ended = true;
     
-    for (Peer& p : peers) {
-        p.next_mining_event = NULL;
-        p.next_mining_block = NULL;
+    for (Peer* p : peers) {
+        p->next_mining_event = NULL;
+        p->next_mining_block = NULL;
     }
     
     log(cout, "SIMULATION HAS ENDED AT THIS POINT\n");
@@ -229,11 +237,11 @@ void Simulator::complete_non_generate_events() {
 
         delete_event(current_event);
     }
-    for (Peer& p : peers){
-        p.analyse_and_export_blockchain(this);
-        string filename = "output/block_arrivals/" + p.get_name() + ".txt";
+    for (Peer* p : peers){
+        p->analyse_and_export_blockchain(this);
+        string filename = "output/block_arrivals/" + p->get_name() + ".txt";
         ofstream outfile(filename);
-        p.export_arrival_times(outfile);
+        p->export_arrival_times(outfile);
         outfile.close();
     }
 }

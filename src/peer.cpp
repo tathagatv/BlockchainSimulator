@@ -5,7 +5,7 @@ int Peer::counter;
 int Peer::total_peers;
 ld Peer::Ttx;
 ld Peer::Tk;
-vector<Peer> Simulator::peers;
+vector<Peer*> Simulator::peers;
 
 /* constructor */
 Peer::Peer() {
@@ -89,7 +89,7 @@ Transaction* Peer::generate_transaction(Simulator* sim) {
         while (receiver == id)
             receiver = unif_dist_peer(rng64);
 
-        txn = new Transaction(sim->current_timestamp, this, &sim->peers[receiver], coins);
+        txn = new Transaction(sim->current_timestamp, this, sim->peers[receiver], coins);
 
         // todo: add transaction in transaction/recv pool
         recv_pool.insert(txn->id);
@@ -467,8 +467,8 @@ void Peer::analyse_and_export_blockchain(Simulator* sim) {
         outfile << (i + 1) << ',';
         outfile << blocks_in_chain[i] << ',';
         outfile << total_blocks[i] << ',';
-        outfile << (int)sim->peers[i].is_fast << ',';
-        outfile << sim->peers[i].hash_power << '\n';
+        outfile << (int)sim->peers[i]->is_fast << ',';
+        outfile << sim->peers[i]->hash_power << '\n';
     }
     outfile.close();
 }

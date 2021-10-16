@@ -46,7 +46,7 @@ void SelfishAttacker::broadcast_mined_block(Simulator* sim){
 		add_block(block, true);
 		validity = "VALID";
 	}
-	sim->log(cout, get_name() + " mines and broadcasts " + validity + " block " + block->get_name());
+	sim->log(cout, "Attacker mines " + validity + " block " + block->get_name());
     block_arrival_times.emplace_back(make_pair(block, sim->current_timestamp));
 
 	// Event* ev = new ForwardBlock(0, this, this, block->clone());
@@ -68,7 +68,7 @@ void StubbornAttacker::broadcast_mined_block(Simulator* sim){
 		add_block(block, true);
 		validity = "VALID";
 	}
-	sim->log(cout, get_name() + " mines and broadcasts " + validity + " block " + block->get_name());
+	sim->log(cout, "Attacker mines " + validity + " block " + block->get_name());
     block_arrival_times.emplace_back(make_pair(block, sim->current_timestamp));
 
 	// Event* ev = new ForwardBlock(0, this, this, block->clone());
@@ -148,9 +148,9 @@ void SelfishAttacker::receive_block(Simulator* sim, Peer* sender, Block* block) 
     if (deepest_block->depth == blockchain.current_block->depth){
 
         // broadcase own block
-
         Block *privateBlock = blockchain.current_block;
         while(privateBlock->depth>=block->depth){
+            sim->log(cout, "Attacker broadcasts block " + privateBlock->get_name());
             Event* ev = new ForwardBlock(0, this, this, privateBlock->clone());
             sim->add_event(ev);
             privateBlock = privateBlock->parent;
@@ -163,6 +163,7 @@ void SelfishAttacker::receive_block(Simulator* sim, Peer* sender, Block* block) 
 
         Block *privateBlock = blockchain.current_block;
         while(privateBlock->depth>=block->depth){
+            sim->log(cout, "Attacker broadcasts block " + privateBlock->get_name());
             Event* ev = new ForwardBlock(0, this, this, privateBlock->clone());
             sim->add_event(ev);
             privateBlock = privateBlock->parent;
@@ -176,6 +177,7 @@ void SelfishAttacker::receive_block(Simulator* sim, Peer* sender, Block* block) 
         Block *privateBlock = blockchain.current_block;
         while(privateBlock->depth>=block->depth){
             if(privateBlock->depth<=deepest_block->depth){
+                sim->log(cout, "Attacker broadcasts block " + privateBlock->get_name());
                 Event* ev = new ForwardBlock(0, this, this, privateBlock->clone());
                 sim->add_event(ev);
             }
@@ -291,6 +293,7 @@ void StubbornAttacker::receive_block(Simulator* sim, Peer* sender, Block* block)
 
         Block *privateBlock = blockchain.current_block;
         while(privateBlock->depth>=block->depth){
+            sim->log(cout, "Attacker broadcasts block " + privateBlock->get_name());
             Event* ev = new ForwardBlock(0, this, this, privateBlock->clone());
             sim->add_event(ev);
             privateBlock = privateBlock->parent;
@@ -304,6 +307,7 @@ void StubbornAttacker::receive_block(Simulator* sim, Peer* sender, Block* block)
         Block *privateBlock = blockchain.current_block;
         while(privateBlock->depth>=block->depth){
             if(privateBlock->depth<=deepest_block->depth){
+                sim->log(cout, "Attacker broadcasts block " + privateBlock->get_name());
                 Event* ev = new ForwardBlock(0, this, this, privateBlock->clone());
                 sim->add_event(ev);
             }
@@ -318,6 +322,7 @@ void StubbornAttacker::receive_block(Simulator* sim, Peer* sender, Block* block)
         Block *privateBlock = blockchain.current_block;
         while(privateBlock->depth>=block->depth){
             if(privateBlock->depth<=deepest_block->depth){
+                sim->log(cout, "Attacker broadcasts block " + privateBlock->get_name());
                 Event* ev = new ForwardBlock(0, this, this, privateBlock->clone());
                 sim->add_event(ev);
             }

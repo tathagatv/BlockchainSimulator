@@ -68,6 +68,9 @@ BroadcastMinedBlock::BroadcastMinedBlock(ld timestamp, Peer* p) : Event(timestam
 }
 
 void BroadcastMinedBlock::run(Simulator* sim) {
+	if(owner->id==40){
+		cout<<"Yep\n";
+	}
 	owner->broadcast_mined_block(sim);
 }
 

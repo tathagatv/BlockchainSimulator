@@ -282,12 +282,19 @@ public:
 
 // ====================================================================== //
 class SelfishAttacker : public Peer {
+
+public:
+
+	bool state_0_prime;
+
+	SelfishAttacker();
 	Block* generate_new_block(Simulator* sim);
 	void receive_block(Simulator* sim, Peer* sender, Block* block);
 	void broadcast_mined_block(Simulator* sim);
 };
 
 class StubbornAttacker : public Peer {
+public:
 	Block* generate_new_block(Simulator* sim);
 	void receive_block(Simulator* sim, Peer* sender, Block* block);
 	void broadcast_mined_block(Simulator* sim);

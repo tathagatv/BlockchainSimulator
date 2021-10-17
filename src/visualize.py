@@ -6,7 +6,6 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import pydot
 from networkx.drawing.nx_pydot import graphviz_layout
-from glob import glob
 from os.path import dirname, abspath
 import pandas as pd
 import numpy as np

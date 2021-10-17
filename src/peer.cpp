@@ -34,7 +34,7 @@ Peer::Peer() {
 void Peer::initialize_block_mining_distribution(ld hash_power){
     this->hash_power = hash_power;
     // more hash power: less Tk
-    block_mining_time = exponential_distribution<ld>(hash_power / Tk);
+    block_mining_time = exponential_distribution<ld>((total_peers * hash_power) / Tk);
 }
 
 /* returns the name of this peer */
@@ -414,7 +414,7 @@ void Peer::traverse_blockchain(Block* b, ostream& os, Block*& deepest_block, vec
     sort(all(b->next), [](Block* a1, Block* a2) {
         return (a1->id) < (a2->id);
     });
-    if (b->depth > deepest_block->depth)
+    if (b->depth > deepest_block->depth || (b->depth == deepest_block->depth && b->id < deepest_block->id))
         deepest_block = b;
 
     // genesis id is -2
@@ -429,6 +429,10 @@ void Peer::traverse_blockchain(Block* b, ostream& os, Block*& deepest_block, vec
 
 /* output the arrival times of blocks to os */
 void Peer::export_arrival_times(ostream& os) {
+    sort(all(block_arrival_times), [](pair<Block*, ld> a1, pair<Block*, ld> a2) {
+        return (a1.first->id) < (a2.first->id);
+    });
+
     os << get_name() << '\n';
     for (pair<Block*, ld>& p : block_arrival_times) {
         Block* b = p.first;
@@ -444,14 +448,19 @@ void Peer::export_arrival_times(ostream& os) {
     os << '\n';
 }
 
+/* output the blockchain to a stream */
+void Peer::export_blockchain(ostream& os) {
+    vector<int> total_blocks(total_peers, 0);
+    Block* deepest_block = blockchain.genesis;
+    traverse_blockchain(blockchain.genesis, os, deepest_block, total_blocks);
+}
+
 /* output the final statistics to a file */
-void Peer::analyse_and_export_blockchain(Simulator* sim) {
-    string filename = "output/blockchain_edgelist_"+get_name()+".txt";
-    ofstream outfile(filename);
+void Peer::export_stats(Simulator* sim, ostream& os) {
+    ostream fake(0);
     Block* deepest_block = blockchain.genesis;
     vector<int> total_blocks(total_peers, 0);
-    traverse_blockchain(blockchain.genesis, outfile, deepest_block, total_blocks);
-    outfile.close();
+    traverse_blockchain(blockchain.genesis, fake, deepest_block, total_blocks);
     
     vector<int> blocks_in_chain(total_peers, 0);
     while (deepest_block->id != blockchain.genesis->id) {
@@ -459,16 +468,12 @@ void Peer::analyse_and_export_blockchain(Simulator* sim) {
         deepest_block = deepest_block->parent;
     }
 
-    if(id!=0) return; // this part should execute only once
-    filename = "output/peer_attributes.txt";
-    outfile = ofstream(filename);
-    outfile << "id,chain_blocks,generated_blocks,is_fast,hash_power\n";
+    os << "id,chain_blocks,generated_blocks,is_fast,hash_power\n";
     for (int i = 0; i < total_peers; i++) {
-        outfile << (i + 1) << ',';
-        outfile << blocks_in_chain[i] << ',';
-        outfile << total_blocks[i] << ',';
-        outfile << (int)sim->peers[i]->is_fast << ',';
-        outfile << sim->peers[i]->hash_power << '\n';
+        os << (i + 1) << ',';
+        os << blocks_in_chain[i] << ',';
+        os << total_blocks[i] << ',';
+        os << (int)sim->peers[i]->is_fast << ',';
+        os << sim->peers[i]->hash_power << '\n';
     }
-    outfile.close();
 }

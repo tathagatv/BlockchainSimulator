@@ -1,4 +1,4 @@
-import os
+import os, sys
 import matplotlib
 matplotlib.use('Agg')
 from matplotlib import style
@@ -58,17 +58,21 @@ def calc_graph_stats(G):
 
 
 base = os.path.join(dirname(dirname(abspath(__file__))), 'output')
-edgelist_files = [f for f in os.listdir(base) if "blockchain_edgelist" in f]
 
-for filename in ["blockchain_edgelist_Peer1.txt","blockchain_edgelist_Peer40.txt"]:
-    with open(os.path.join(base, filename), 'r') as fp:
-        edges = [l.strip().split() for l in fp.readlines() if l.strip()]
-        edges = [(int(u), int(v)) for u, v in edges]
-    G = nx.DiGraph(edges)
-    filename = filename.replace("edgelist","img")
-    filename = filename.replace("txt","png")
-    outfile = os.path.join(base, filename)
-    draw_blockchain(G, outfile)
+peer = int(sys.argv[1]) if len(sys.argv) > 1 else -1
+num_peers = len(os.listdir(os.path.join(base, 'block_arrivals')))
+peer = (peer % num_peers + num_peers) % num_peers
+peer = f'Peer{peer + 1}.txt'
+adversary = num_peers
+
+# for folder in ['final_blockchains', 'termination_blockchains']:
+#     path = os.path.join(base, folder, peer)
+#     with open(path, 'r') as fp:
+#         edges = [l.strip().split() for l in fp.readlines() if l.strip()]
+#         edges = [(int(u), int(v)) for u, v in edges]
+#     G = nx.DiGraph(edges)
+#     filename = path[:-4] + '_img.png'
+#     draw_blockchain(G, filename)
 
 # max_depth, branch_lengths = calc_graph_stats(G)
 # print('Total blocks in Blockchain:', len(G.nodes()))
@@ -78,15 +82,20 @@ for filename in ["blockchain_edgelist_Peer1.txt","blockchain_edgelist_Peer40.txt
 #     print(f'Branch Lengths: Total={len(branch_lengths)}, Max={branch_lengths.max()}, Mean={branch_lengths.mean():.3f}, Min={branch_lengths.min()}')
 # else:
 #     print('No branches created')
-print()
+# print()
 
-df = pd.read_csv(os.path.join(base, 'peer_attributes.txt'), index_col='id')
+stat_file = os.path.join(base, 'peer_stats', peer)
+df = pd.read_csv(stat_file, index_col='id')
 
-for hash_pwr_is_fast, grp_df in df.groupby(['hash_power', 'is_fast']):
-    hash_pwr, is_fast = hash_pwr_is_fast
-    hash_pwr = 'HIGH' if grp_df['hash_power'].mean() > df['hash_power'].mean() else 'LOW'
-    mean_frac = grp_df['chain_blocks'].divide(grp_df['generated_blocks']).fillna(0).mean()
-    print(f'Hash power: {hash_pwr}, Fast Node? {bool(is_fast)}, Mean fraction of blocks: {mean_frac:.3f}')
+adversary_stats = df.loc[adversary].copy()
+mpu_adv = adversary_stats['chain_blocks'] / adversary_stats['generated_blocks']
+print(f'MPU_adv = {mpu_adv:.5f}')
+
+# for hash_pwr_is_fast, grp_df in df.groupby(['hash_power', 'is_fast']):
+#     hash_pwr, is_fast = hash_pwr_is_fast
+#     hash_pwr = 'HIGH' if grp_df['hash_power'].mean() > df['hash_power'].mean() else 'LOW'
+#     mean_frac = grp_df['chain_blocks'].divide(grp_df['generated_blocks']).fillna(0).mean()
+#     print(f'Hash power: {hash_pwr}, Fast Node? {bool(is_fast)}, Mean fraction of blocks: {mean_frac:.3f}')
 
 df = df.sort_values(by='hash_power').reset_index(drop=True)
 total_blocks_in_chain = df['generated_blocks'].sum()
@@ -95,6 +104,7 @@ peer_ids = df.index.to_numpy()
 slow_peers = df[df['is_fast'] == 0]
 fast_peers = df[df['is_fast'] == 1]
 
+stat_outfile = stat_file[:-4] + '_stats.png'
 style.use('ggplot')
 fig = plt.figure(dpi=300)
 plt.xlabel('Peer ID')
@@ -103,6 +113,6 @@ plt.title('Statistics')
 plt.plot(peer_ids, df['hash_power'].to_numpy(), label='Fraction of Hash Power')
 plt.scatter(slow_peers.index, fraction_blocks_in_chain[slow_peers.index], label='Fraction of Blocks in Longest Chain, Slow Peer')
 plt.scatter(fast_peers.index, fraction_blocks_in_chain[fast_peers.index], label='Fraction of Blocks in Longest Chain, Fast Peer')
-plt.legend(prop={'size': 8}, framealpha=0.3)
-plt.savefig(os.path.join(base, 'block_stats.png'), bbox_inches='tight')
+plt.legend(prop={'size': 8}, framealpha=0.3, loc='upper left')
+plt.savefig(stat_outfile, bbox_inches='tight')
 plt.close()

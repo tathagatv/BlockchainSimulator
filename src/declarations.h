@@ -275,8 +275,9 @@ public:
 	virtual void broadcast_mined_block(Simulator* sim);
 
 	void traverse_blockchain(Block* b, ostream& os, Block*& deepest_block, vector<int>& total_blocks);
+	void export_blockchain(ostream& os);
 	void export_arrival_times(ostream& os);
-	void analyse_and_export_blockchain(Simulator* sim);
+	void export_stats(Simulator* sim, ostream& os);
 };
 
 // ====================================================================== //
@@ -339,6 +340,7 @@ public:
 	void run(ld end_time, int max_txns_, int max_blocks_);
 	void log(ostream& os, const string& s);
 	void complete_non_generate_events();
+	void reset(const fs::path& dir_path);
 };
 
 #endif

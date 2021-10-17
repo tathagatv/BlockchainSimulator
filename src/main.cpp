@@ -87,8 +87,8 @@ int main(int argc, char *argv[]) {
 	.action([](const string& value) { return stold(value); });
 
 	argparser.add_argument("--adversary_type", "-adv")
-	.default_value("none")
-	.help("Type of adversary")
+	.default_value((string)"none")
+	.help("Type of adversary, choose from (none, selfish, stubborn)")
 	.action([](const string& value) { 
 		static const vector<string> choices = { "none", "selfish", "stubborn" };
 		if (std::find(choices.begin(), choices.end(), value) != choices.end()) {

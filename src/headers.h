@@ -32,6 +32,9 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+#include <filesystem>
+
+namespace fs = std::filesystem;
 using namespace std;
 
 typedef long long ll;

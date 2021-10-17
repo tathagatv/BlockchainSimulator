@@ -4,9 +4,10 @@ using namespace std;
 Simulator::Simulator(int n_, ld z_, ld Ttx_, ld Tk_, int edges_, bool verbose_, ld invalid_txn_prob_, ld invalid_block_prob_, ld zeta_, string adversary_) {
     n = n_;
     // ensure z (fraction of slow peers) is between 0 and 1
-    z_ = min((ld)1, max(z_, (ld)0)); 
+    z_ = min((ld)1, max(z_, (ld)0));
     slow_peers = z_ * n;
-    Ttx = Ttx_; Tk = Tk_; 
+    Ttx = Ttx_;
+    Tk = Tk_;
     edges = edges_;
     current_timestamp = START_TIME;
     invalid_txn_prob = invalid_txn_prob_;
@@ -17,7 +18,7 @@ Simulator::Simulator(int n_, ld z_, ld Ttx_, ld Tk_, int edges_, bool verbose_, 
     adversary = adversary_;
 
     Transaction::counter = 0;
-    Block::max_size = MAX_BLOCK_SIZE; // 1000 KB
+    Block::max_size = MAX_BLOCK_SIZE;  // 1000 KB
     Block::counter = 0;
     Blockchain::global_genesis = new Block(NULL);
     Blockchain::global_genesis->set_parent(NULL);
@@ -27,8 +28,8 @@ Simulator::Simulator(int n_, ld z_, ld Ttx_, ld Tk_, int edges_, bool verbose_, 
     Peer::Tk = Tk;
 }
 
-Simulator::~Simulator(){
-    for(int i=0; i<n; i++){
+Simulator::~Simulator() {
+    for (int i = 0; i < n; i++) {
         delete peers[i];
     }
 }
@@ -36,7 +37,7 @@ Simulator::~Simulator(){
 /* initialize peers */
 void Simulator::get_new_peers() {
     peers.resize(n);
-    for(int i=0; i<n; i++){
+    for (int i = 0; i < n; i++) {
         peers[i] = new Peer;
     }
     for (int i = 0; i < slow_peers; i++)
@@ -46,21 +47,20 @@ void Simulator::get_new_peers() {
 
     random_shuffle(peers);
 
-    if(adversary!="none"){
-        delete peers[n-1];
-        peers.pop_back();   
-        if(adversary=="selfish"){
+    if (adversary != "none") {
+        delete peers[n - 1];
+        peers.pop_back();
+        if (adversary == "selfish") {
             peers.push_back(new SelfishAttacker);
-        }else{
+        } else {
             peers.push_back(new StubbornAttacker);
         }
-        peers[n-1]->is_fast = true;
-        peers[n-1]->hash_power = HIGH_HASH_POWER*(n/3);
+        peers[n - 1]->is_fast = true;
+        peers[n - 1]->hash_power = HIGH_HASH_POWER * (n / 3);
     }
 
     for (int i = 0; i < n; i++)
         peers[i]->id = Peer::counter++;
-
 
     // normalization factor: to normalize the hash power
     ld normalization_factor = 0;
@@ -75,9 +75,8 @@ void Simulator::form_random_network() {
     assert(edges >= n - 1);
     int n = peers.size();
 
-    if(adversary!="none"){
-        n-=1;
-    }
+    if (adversary != "none")
+        n--;
 
     assert(n >= 2);
     uniform_int_distribution<int> unif(0, n - 1);
@@ -91,9 +90,9 @@ void Simulator::form_random_network() {
     if (node_1 > node_2)
         swap(node_1, node_2);
 
-    // s: nodes not yet added in network 
+    // s: nodes not yet added in network
     // t: nodes already added in network
-    set<int> s, t; 
+    set<int> s, t;
 
     for (int i = 0; i < n; i++)
         s.insert(i);
@@ -119,7 +118,7 @@ void Simulator::form_random_network() {
 
             s.erase(next_node);
             t.insert(next_node);
-            
+
             if (next_node > neighbour_node)
                 swap(next_node, neighbour_node);
 
@@ -128,7 +127,7 @@ void Simulator::form_random_network() {
             edges--, degrees[next_node]++, degrees[neighbour_node]++;
         }
     }
-    
+
     set<pair<int, int>>::iterator it;
     while (edges > 0) {
         int a = unif(rng64);
@@ -145,24 +144,21 @@ void Simulator::form_random_network() {
         }
     }
 
-    if(adversary!="none"){
+    if (adversary != "none") {
+        // add edges to adversary
+        edges = (int)(zeta * n);
 
-        // add edges to adversary 
-        edges = (int)(zeta*n);
-
-        n+=1;
+        n += 1;
         while (edges > 0) {
             int a = unif(rng64);
-            int b = n-1;
+            int b = n - 1;
 
             if (!edges_log.count(make_pair(a, b))) {
                 Peer::add_edge(peers[a], peers[b]);
                 edges--, degrees[a]++, degrees[b]++;
             }
         }
-    
     }
-
 }
 
 void Simulator::init_events() {
@@ -184,6 +180,11 @@ void Simulator::delete_event(Event* event) {
     assert(it != events.end());
     events.erase(it);
     delete event;
+}
+
+void Simulator::reset(const fs::path& dir_path) {
+    fs::remove_all(dir_path);
+    fs::create_directories(dir_path);
 }
 
 void Simulator::run(ld end_time_, int max_txns_, int max_blocks_) {
@@ -212,6 +213,16 @@ void Simulator::run(ld end_time_, int max_txns_, int max_blocks_) {
         delete_event(current_event);
     }
 
+    log(cout, "SIMULATION HAS ENDED AT THIS POINT\n");
+    
+    reset("output/termination_blockchains");
+    for (Peer* p : peers) {
+        string filename = "output/termination_blockchains/" + p->get_name() + ".txt";
+        ofstream outfile(filename);
+        p->export_blockchain(outfile);
+        outfile.close();
+    }
+
     complete_non_generate_events();
 
     cout << "Total Transactions: " << (Transaction::counter) << '\n';
@@ -220,28 +231,43 @@ void Simulator::run(ld end_time_, int max_txns_, int max_blocks_) {
 
 void Simulator::complete_non_generate_events() {
     has_simulation_ended = true;
-    
+
     for (Peer* p : peers) {
         p->next_mining_event = NULL;
         p->next_mining_block = NULL;
     }
-    
-    log(cout, "SIMULATION HAS ENDED AT THIS POINT\n");
 
     while (!events.empty()) {
         current_event = *events.begin();
         current_timestamp = current_event->timestamp;
 
-        if (!current_event->is_generate_type_event) 
+        if (!current_event->is_generate_type_event)
             current_event->run(this);
 
         delete_event(current_event);
     }
-    for (Peer* p : peers){
-        p->analyse_and_export_blockchain(this);
+
+    reset("output/final_blockchains");
+    for (Peer* p : peers) {
+        string filename = "output/final_blockchains/" + p->get_name() + ".txt";
+        ofstream outfile(filename);
+        p->export_blockchain(outfile);
+        outfile.close();
+    }
+
+    reset("output/block_arrivals");
+    for (Peer* p : peers) {
         string filename = "output/block_arrivals/" + p->get_name() + ".txt";
         ofstream outfile(filename);
         p->export_arrival_times(outfile);
+        outfile.close();
+    }
+
+    reset("output/peer_stats");
+    for (Peer* p : peers) {
+        string filename = "output/peer_stats/" + p->get_name() + ".txt";
+        ofstream outfile(filename);
+        p->export_stats(this, outfile);
         outfile.close();
     }
 }
@@ -249,5 +275,6 @@ void Simulator::complete_non_generate_events() {
 void Simulator::log(ostream& os, const string& s) {
     if (!verbose) return;
     os << "Time " << fixed << setprecision(5) << current_timestamp;
-    os << ": " << s << '\n' << flush;
+    os << ": " << s << '\n'
+       << flush;
 }

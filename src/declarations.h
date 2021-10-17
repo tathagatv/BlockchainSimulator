@@ -274,7 +274,7 @@ public:
 
 	virtual void broadcast_mined_block(Simulator* sim);
 
-	void traverse_blockchain(Block* b, ostream& os, Block*& deepest_block, vector<int>& total_blocks);
+	void traverse_blockchain(Block* b, ostream& os, Block*& deepest_block, vector<int>& total_blocks, set<int> &visited);
 	void export_blockchain(ostream& os);
 	void export_arrival_times(ostream& os);
 	void export_stats(Simulator* sim, ostream& os);

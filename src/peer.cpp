@@ -415,8 +415,10 @@ void Peer::receive_block(Simulator* sim, Peer* sender, Block* block) {
 }
 
 /* output the edges in blockchain in os and update deepest_block */
-void Peer::traverse_blockchain(Block* b, ostream& os, Block*& deepest_block, vector<int>& total_blocks) {
+void Peer::traverse_blockchain(Block* b, ostream& os, Block*& deepest_block, vector<int>& total_blocks, set<int> &visited) {
     // for canonicalization
+    if(visited.count(b->id)) return;
+    visited.insert(b->id);
     sort(all(b->next), [](Block* a1, Block* a2) {
         return (a1->id) < (a2->id);
     });
@@ -429,7 +431,7 @@ void Peer::traverse_blockchain(Block* b, ostream& os, Block*& deepest_block, vec
     
     for (Block* c : b->next) {
         os << (b->id + 1) << ' ' << (c->id + 1) << '\n';
-        traverse_blockchain(c, os, deepest_block, total_blocks);
+        traverse_blockchain(c, os, deepest_block, total_blocks, visited);
     }
 }
 
@@ -459,7 +461,8 @@ void Peer::export_arrival_times(ostream& os) {
 void Peer::export_blockchain(ostream& os) {
     vector<int> total_blocks(total_peers, 0);
     Block* deepest_block = blockchain.genesis;
-    traverse_blockchain(blockchain.genesis, os, deepest_block, total_blocks);
+    set<int> visited;
+    traverse_blockchain(blockchain.genesis, os, deepest_block, total_blocks, visited);
 }
 
 /* output the final statistics to a file */
@@ -467,7 +470,8 @@ void Peer::export_stats(Simulator* sim, ostream& os) {
     ostream fake(0);
     Block* deepest_block = blockchain.genesis;
     vector<int> total_blocks(total_peers, 0);
-    traverse_blockchain(blockchain.genesis, fake, deepest_block, total_blocks);
+    set<int> visited;
+    traverse_blockchain(blockchain.genesis, fake, deepest_block, total_blocks, visited);
 
     vector<int> blocks_in_chain(total_peers, 0);
     while (deepest_block->id != blockchain.genesis->id) {

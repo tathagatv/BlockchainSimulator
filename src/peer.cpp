@@ -295,6 +295,7 @@ void Peer::free_blocks_dfs(Block* block, vector<int>& cur_balances, custom_unord
     for (Block* child : it->second) {
         assert(child->parent == NULL);
         child->set_parent(block);
+        (block->next).emplace_back(child);
         free_blocks.erase(child->id);
         free_blocks_dfs(child, cur_balances, blocks_to_add, deepest_block, sim);
     }

@@ -122,14 +122,22 @@ for folder in ['final_blockchains', 'termination_blockchains']:
 stat_file = os.path.join(base, 'peer_stats', peer)
 df = pd.read_csv(stat_file, index_col='id')
 
+total_blocks = df['generated_blocks'].sum()
+total_blocks_in_chain = df['chain_blocks'].sum()
 total_hash_power = df['hash_power'].sum()
 adversary_stats = df.loc[adversary].copy()
-mpu_adv = adversary_stats['chain_blocks'] / adversary_stats['generated_blocks']
 alpha = round(adversary_stats['hash_power'] / total_hash_power, 2)
 
+mpu_adv = adversary_stats['chain_blocks'] / adversary_stats['generated_blocks']
+rpool = adversary_stats['chain_blocks'] / total_blocks_in_chain
+mpu_overall = total_blocks_in_chain / total_blocks
+
+print(f'Alpha = {alpha:.2f}')
 print(f'MPU_adv = {mpu_adv:.5f}')
-print(f'Gamma_0 = {R_pool(alpha, 0)}')
-print(f'Gamma_1 = {R_pool(alpha, 1)}')
+print(f'MPU_overall = {mpu_overall:.5f}')
+print(f'Gamma_0 = {R_pool(alpha, 0):.5f}')
+print(f'Gamma_1 = {R_pool(alpha, 1):.5f}')
+print(f'R_pool = {rpool:.5f}')
 
 # for hash_pwr_is_fast, grp_df in df.groupby(['hash_power', 'is_fast']):
 #     hash_pwr, is_fast = hash_pwr_is_fast
@@ -138,8 +146,6 @@ print(f'Gamma_1 = {R_pool(alpha, 1)}')
 #     print(f'Hash power: {hash_pwr}, Fast Node? {bool(is_fast)}, Mean fraction of blocks: {mean_frac:.3f}')
 
 df = df.sort_values(by='hash_power').reset_index(drop=True)
-total_blocks_in_chain = df['generated_blocks'].sum()
-print(total_blocks_in_chain)
 fraction_blocks_in_chain = df['chain_blocks'].to_numpy() / total_blocks_in_chain
 peer_ids = df.index.to_numpy()
 slow_peers = df[df['is_fast'] == 0]

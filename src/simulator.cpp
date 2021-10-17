@@ -65,13 +65,13 @@ void Simulator::get_new_peers() {
     // normalization factor: to normalize the hash power
     ld normalization_factor = 0;
     for (Peer* p : peers)
-        normalization_factor += p->hash_power;
+        normalization_factor += p->hash_power / n;
     for (Peer* p : peers)
         p->initialize_block_mining_distribution(p->hash_power / normalization_factor);
 }
 
 /* generate scale free network between the peers */
-void Simulator::form_random_network() {
+void Simulator::form_random_network(ostream& os) {
     assert(edges >= n - 1);
     int n = peers.size();
 
@@ -104,7 +104,7 @@ void Simulator::form_random_network() {
 
     // add edge between node_1 and node_2
     vector<int> degrees(n, 0);
-    Peer::add_edge(peers[node_1], peers[node_2]);
+    Peer::add_edge(peers[node_1], peers[node_2], os);
     edges_log.insert(make_pair(node_1, node_2));
     edges--, degrees[node_1]++, degrees[node_2]++;
 
@@ -122,7 +122,7 @@ void Simulator::form_random_network() {
             if (next_node > neighbour_node)
                 swap(next_node, neighbour_node);
 
-            Peer::add_edge(peers[next_node], peers[neighbour_node]);
+            Peer::add_edge(peers[next_node], peers[neighbour_node], os);
             edges_log.insert(make_pair(next_node, neighbour_node));
             edges--, degrees[next_node]++, degrees[neighbour_node]++;
         }
@@ -139,7 +139,7 @@ void Simulator::form_random_network() {
         if (a > b) swap(a, b);
 
         if (!edges_log.count(make_pair(a, b))) {
-            Peer::add_edge(peers[a], peers[b]);
+            Peer::add_edge(peers[a], peers[b], os);
             edges--, degrees[a]++, degrees[b]++;
         }
     }
@@ -154,7 +154,7 @@ void Simulator::form_random_network() {
             int b = n - 1;
 
             if (!edges_log.count(make_pair(a, b))) {
-                Peer::add_edge(peers[a], peers[b]);
+                Peer::add_edge(peers[a], peers[b], os);
                 edges--, degrees[a]++, degrees[b]++;
             }
         }
@@ -189,7 +189,13 @@ void Simulator::reset(const fs::path& dir_path) {
 
 void Simulator::run(ld end_time_, int max_txns_, int max_blocks_) {
     get_new_peers();
-    form_random_network();
+
+    reset("output");
+    string filename = "output/peer_network_edgelist.txt";
+    ofstream outfile(filename);
+    form_random_network(outfile);
+    outfile.close();
+    
     init_events();
     has_simulation_ended = false;
 

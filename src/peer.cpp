@@ -34,7 +34,7 @@ Peer::Peer() {
 void Peer::initialize_block_mining_distribution(ld hash_power){
     this->hash_power = hash_power;
     // more hash power: less Tk
-    block_mining_time = exponential_distribution<ld>((total_peers * hash_power) / Tk);
+    block_mining_time = exponential_distribution<ld>(hash_power / Tk);
 }
 
 /* returns the name of this peer */
@@ -48,7 +48,10 @@ int Peer::get_degree() {
 }
 
 /* creates a link between peer a and peer b */
-void Peer::add_edge(Peer *a, Peer *b) {
+void Peer::add_edge(Peer *a, Peer *b, ostream& os) {
+    // write undirected edge to file
+    os << (a->id + 1) << ' ' << (b->id + 1) << '\n';
+
     // increase the degree
     a->degree++;
     b->degree++;

@@ -250,7 +250,7 @@ public:
 
 	Peer();
 	virtual ~Peer(){};
-	static void add_edge(Peer* a, Peer* b);
+	static void add_edge(Peer* a, Peer* b, ostream& os);
 	void initialize_block_mining_distribution(ld hash_power);
 	int get_degree();
 	string get_name();
@@ -333,7 +333,7 @@ public:
 	Simulator(int n_, ld z_, ld Ttx_, ld Tk_, int edges_, bool verbose_, ld invalid_txn_prob_, ld invalid_block_prob_, ld zeta_, string adversary_);
 	~Simulator();
 	void get_new_peers();
-	void form_random_network();
+	void form_random_network(ostream& os);
 	void init_events();
 	void add_event(Event* event);
 	void delete_event(Event* event);

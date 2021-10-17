@@ -21,7 +21,33 @@ def draw_blockchain(G, filename):
     node_size = 7000 // n
     font_size = min(8, 700 // n)
     edge_width = min(1.0, font_size / 4)
-    nx.draw(G, pos, node_size=node_size, font_size=font_size, arrowsize=font_size, width=edge_width, node_color='darkred', with_labels=True, font_color="white")
+    nx.draw(G, pos, 
+        node_size=node_size, 
+        font_size=font_size, 
+        arrowsize=font_size, 
+        width=edge_width, 
+        node_color='darkred', 
+        with_labels=True, 
+        font_color="white"
+    )
+    plt.savefig(filename, bbox_inches='tight')
+    plt.close()
+
+
+def draw_peer_network(file, adversary=True):
+    with open(file, 'r') as fp:
+        edges = [l.strip().split() for l in fp.readlines() if l.strip()]
+        edges = [(int(u), int(v)) for u, v in edges]
+    G = nx.Graph(edges)
+    adversary = max(G.nodes()) if adversary else -1
+    colours = [('darkred' if v == adversary else '#1f78b4') for v in G.nodes()]
+    pos = graphviz_layout(G, prog="circo")
+    filename = file.replace('_edgelist.txt', '_img.png')
+    nx.draw(G, pos, 
+        node_color=colours, 
+        with_labels=True, 
+        font_color="white"
+    )
     plt.savefig(filename, bbox_inches='tight')
     plt.close()
 
@@ -58,6 +84,9 @@ def calc_graph_stats(G):
 
 
 base = os.path.join(dirname(dirname(abspath(__file__))), 'output')
+network_file = os.path.join(base, 'peer_network_edgelist.txt')
+draw_peer_network(network_file)
+sys.exit(0)
 
 peer = int(sys.argv[1]) if len(sys.argv) > 1 else -1
 num_peers = len(os.listdir(os.path.join(base, 'block_arrivals')))

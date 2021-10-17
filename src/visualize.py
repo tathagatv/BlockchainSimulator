@@ -83,10 +83,15 @@ def calc_graph_stats(G):
     return max_depth[genesis] + 1, np.array(branch_lengths)
 
 
+def R_pool(alpha, gamma):
+    numerator = (alpha * (1 - alpha) * (1 - alpha) * (4 * alpha + gamma * (1 - 2 * alpha)) - alpha * alpha * alpha)
+    denominator = 1 - alpha * (1 + alpha * (2 - alpha))
+    return numerator / denominator
+
+
 base = os.path.join(dirname(dirname(abspath(__file__))), 'output')
 network_file = os.path.join(base, 'peer_network_edgelist.txt')
 draw_peer_network(network_file)
-sys.exit(0)
 
 peer = int(sys.argv[1]) if len(sys.argv) > 1 else -1
 num_peers = len(os.listdir(os.path.join(base, 'block_arrivals')))
@@ -94,14 +99,14 @@ peer = (peer % num_peers + num_peers) % num_peers
 peer = f'Peer{peer + 1}.txt'
 adversary = num_peers
 
-# for folder in ['final_blockchains', 'termination_blockchains']:
-#     path = os.path.join(base, folder, peer)
-#     with open(path, 'r') as fp:
-#         edges = [l.strip().split() for l in fp.readlines() if l.strip()]
-#         edges = [(int(u), int(v)) for u, v in edges]
-#     G = nx.DiGraph(edges)
-#     filename = path[:-4] + '_img.png'
-#     draw_blockchain(G, filename)
+for folder in ['final_blockchains', 'termination_blockchains']:
+    path = os.path.join(base, folder, peer)
+    with open(path, 'r') as fp:
+        edges = [l.strip().split() for l in fp.readlines() if l.strip()]
+        edges = [(int(u), int(v)) for u, v in edges]
+    G = nx.DiGraph(edges)
+    filename = path[:-4] + '_img.png'
+    draw_blockchain(G, filename)
 
 # max_depth, branch_lengths = calc_graph_stats(G)
 # print('Total blocks in Blockchain:', len(G.nodes()))
@@ -116,9 +121,15 @@ adversary = num_peers
 stat_file = os.path.join(base, 'peer_stats', peer)
 df = pd.read_csv(stat_file, index_col='id')
 
+total_hash_power = df['hash_power'].sum()
+
 adversary_stats = df.loc[adversary].copy()
 mpu_adv = adversary_stats['chain_blocks'] / adversary_stats['generated_blocks']
 print(f'MPU_adv = {mpu_adv:.5f}')
+print(f'Gamma 0 = {R_pool(0.35, 0)}')
+print(f'Gamma 1 = {R_pool(0.35, 1)}')
+
+print(adversary_stats['hash_power'] / total_hash_power)
 
 # for hash_pwr_is_fast, grp_df in df.groupby(['hash_power', 'is_fast']):
 #     hash_pwr, is_fast = hash_pwr_is_fast
@@ -139,7 +150,7 @@ fig = plt.figure(dpi=300)
 plt.xlabel('Peer ID')
 plt.xticks(peer_ids, [str(o + 1) if o % 5 == 0 or o + 1 == len(peer_ids) else '' for o in peer_ids])
 plt.title('Statistics')
-plt.plot(peer_ids, df['hash_power'].to_numpy(), label='Fraction of Hash Power')
+plt.plot(peer_ids, df['hash_power'].to_numpy() / total_hash_power, label='Fraction of Hash Power')
 plt.scatter(slow_peers.index, fraction_blocks_in_chain[slow_peers.index], label='Fraction of Blocks in Longest Chain, Slow Peer')
 plt.scatter(fast_peers.index, fraction_blocks_in_chain[fast_peers.index], label='Fraction of Blocks in Longest Chain, Fast Peer')
 plt.legend(prop={'size': 8}, framealpha=0.3, loc='upper left')

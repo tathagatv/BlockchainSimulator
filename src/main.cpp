@@ -86,6 +86,11 @@ int main(int argc, char *argv[]) {
 	.help("Fraction of honest nodes adversary is connected to")
 	.action([](const string& value) { return stold(value); });
 
+	argparser.add_argument("--alpha", "-a")
+	.default_value((ld)0.35)
+	.help("Fraction of hash power belonging to attacker")
+	.action([](const string& value) { return stold(value); });
+
 	argparser.add_argument("--adversary_type", "-adv")
 	.default_value((string)"none")
 	.help("Type of adversary, choose from (none, selfish, stubborn)")
@@ -112,12 +117,13 @@ int main(int argc, char *argv[]) {
 	ld invalid_txn_prob = argparser.get<ld>("-it");
 	ld invalid_block_prob = argparser.get<ld>("-ib");
 	ld zeta = argparser.get<ld>("-zeta");
+	ld alpha = argparser.get<ld>("-a");
 	string adv = argparser.get<string>("-adv");
 
 	rng.seed(seed);
 	rng64.seed(seed);
 
-	Simulator simulator(n, z, Ttx, Tk, edges, verbose, invalid_txn_prob, invalid_block_prob, zeta, adv);
+	Simulator simulator(n, z, Ttx, Tk, edges, verbose, invalid_txn_prob, invalid_block_prob, zeta, adv, alpha);
 	simulator.run(t, max_txns, max_blocks);
 
 	return 0;

@@ -1,7 +1,7 @@
 #include "declarations.h"
 using namespace std;
 
-Simulator::Simulator(int n_, ld z_, ld Ttx_, ld Tk_, int edges_, bool verbose_, ld invalid_txn_prob_, ld invalid_block_prob_, ld zeta_, string adversary_) {
+Simulator::Simulator(int n_, ld z_, ld Ttx_, ld Tk_, int edges_, bool verbose_, ld invalid_txn_prob_, ld invalid_block_prob_, ld zeta_, string adversary_, ld alpha_) {
     n = n_;
     // ensure z (fraction of slow peers) is between 0 and 1
     z_ = min((ld)1, max(z_, (ld)0));
@@ -16,6 +16,7 @@ Simulator::Simulator(int n_, ld z_, ld Ttx_, ld Tk_, int edges_, bool verbose_, 
     has_simulation_ended = false;
     zeta = zeta_;
     adversary = adversary_;
+    alpha = alpha_;
 
     Transaction::counter = 0;
     Block::max_size = MAX_BLOCK_SIZE;  // 1000 KB
@@ -56,7 +57,10 @@ void Simulator::get_new_peers() {
             peers.push_back(new StubbornAttacker);
         }
         peers[n - 1]->is_fast = true;
-        peers[n - 1]->hash_power = HIGH_HASH_POWER * (n / 3);
+        ld honest_power = 0.0;
+        for (int i = 0; i < n - 1; i++)
+            honest_power += peers[i]->hash_power;
+        peers[n - 1]->hash_power = (honest_power * alpha) / (1 - alpha);
     }
 
     for (int i = 0; i < n; i++)
@@ -219,7 +223,7 @@ void Simulator::run(ld end_time_, int max_txns_, int max_blocks_) {
         delete_event(current_event);
     }
 
-    log(cout, "SIMULATION HAS ENDED AT THIS POINT\n");
+    // log(cout, "SIMULATION HAS ENDED AT THIS POINT\n");
     
     reset("output/termination_blockchains");
     for (Peer* p : peers) {
@@ -281,6 +285,5 @@ void Simulator::complete_non_generate_events() {
 void Simulator::log(ostream& os, const string& s) {
     if (!verbose) return;
     os << "Time " << fixed << setprecision(5) << current_timestamp;
-    os << ": " << s << '\n'
-       << flush;
+    os << ": " << s << '\n' << flush;
 }

@@ -329,8 +329,10 @@ public:
 	ld zeta;
 	/* adversary type */
 	string adversary;
+	/* fraction of hash power of attacker */
+	ld alpha;
 
-	Simulator(int n_, ld z_, ld Ttx_, ld Tk_, int edges_, bool verbose_, ld invalid_txn_prob_, ld invalid_block_prob_, ld zeta_, string adversary_);
+	Simulator(int n_, ld z_, ld Ttx_, ld Tk_, int edges_, bool verbose_, ld invalid_txn_prob_, ld invalid_block_prob_, ld zeta_, string adversary_, ld alpha_);
 	~Simulator();
 	void get_new_peers();
 	void form_random_network(ostream& os);

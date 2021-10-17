@@ -33,6 +33,8 @@ string Block::get_name() {
 /* return a copy of this block */
 Block* Block::clone() {
     Block* ret = new Block(*this);
+    ret->reset_parent();
+    ret->next.clear();
     return ret;
 }
 

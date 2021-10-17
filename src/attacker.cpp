@@ -99,7 +99,6 @@ void SelfishAttacker::receive_block(Simulator* sim, Peer* sender, Block* block) 
 
     // block parent not in our blockchain
     if (chain_it == chain_blocks.end()) {
-        block->reset_parent();
         free_blocks[block->id] = block;
         free_block_parents[block->parent_id].emplace_back(block);
         return;
@@ -238,7 +237,6 @@ void StubbornAttacker::receive_block(Simulator* sim, Peer* sender, Block* block)
 
     // block parent not in our blockchain
     if (chain_it == chain_blocks.end()) {
-        block->reset_parent();
         free_blocks[block->id] = block;
         free_block_parents[block->parent_id].emplace_back(block);
         return;

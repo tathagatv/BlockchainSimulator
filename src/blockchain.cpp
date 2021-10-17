@@ -13,7 +13,7 @@ Blockchain::Blockchain() {
 /* add block to the children of its parent block in the blockchain */
 void Blockchain::add(Block* block) {
     assert(block->parent != NULL);
-    (block->parent->next).emplace_back(block);
+    (block->parent->next).push_back(block);
 }
 
 /* returns the parent while updating the balances array and storing the transactions */

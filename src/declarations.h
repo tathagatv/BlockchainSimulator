@@ -240,7 +240,7 @@ public:
 	Block* next_mining_block;
 
 	/* blocks which are invalid */
-	custom_unordered_set<int> rejected_blocks;
+	custom_unordered_set<int> rejected_blocks, received_blocks;
 	/* chain_blocks: blocks in the blockchain, free_blocks: blocks not yet in blockchain */
 	custom_map<int, Block*> chain_blocks, free_blocks;
 	/* map from free_block_parents ids to pointer to free blocks */

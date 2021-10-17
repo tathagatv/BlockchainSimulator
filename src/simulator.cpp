@@ -37,7 +37,12 @@ Simulator::~Simulator() {
 
 /* initialize peers */
 void Simulator::get_new_peers() {
+
+    if (adversary != "none")
+        n--;
+
     peers.resize(n);
+
     for (int i = 0; i < n; i++) {
         peers[i] = new Peer;
     }
@@ -49,8 +54,9 @@ void Simulator::get_new_peers() {
     random_shuffle(peers);
 
     if (adversary != "none") {
-        delete peers[n - 1];
-        peers.pop_back();
+        n++;
+        // delete peers[n - 1];
+        // peers.pop_back();
         if (adversary == "selfish") {
             peers.push_back(new SelfishAttacker);
         } else {
@@ -235,6 +241,22 @@ void Simulator::run(ld end_time_, int max_txns_, int max_blocks_) {
 
     complete_non_generate_events();
 
+    reset("output/block_arrivals");
+    for (Peer* p : peers) {
+        string filename = "output/block_arrivals/" + p->get_name() + ".txt";
+        ofstream outfile(filename);
+        p->export_arrival_times(outfile);
+        outfile.close();
+    }
+
+    reset("output/peer_stats");
+    for (Peer* p : peers) {
+        string filename = "output/peer_stats/" + p->get_name() + ".txt";
+        ofstream outfile(filename);
+        p->export_stats(this, outfile);
+        outfile.close();
+    }
+
     cout << "Total Transactions: " << (Transaction::counter) << '\n';
     cout << "Total Blocks: " << (Block::counter) << '\n';
 }
@@ -262,22 +284,6 @@ void Simulator::complete_non_generate_events() {
         string filename = "output/final_blockchains/" + p->get_name() + ".txt";
         ofstream outfile(filename);
         p->export_blockchain(outfile);
-        outfile.close();
-    }
-
-    reset("output/block_arrivals");
-    for (Peer* p : peers) {
-        string filename = "output/block_arrivals/" + p->get_name() + ".txt";
-        ofstream outfile(filename);
-        p->export_arrival_times(outfile);
-        outfile.close();
-    }
-
-    reset("output/peer_stats");
-    for (Peer* p : peers) {
-        string filename = "output/peer_stats/" + p->get_name() + ".txt";
-        ofstream outfile(filename);
-        p->export_stats(this, outfile);
         outfile.close();
     }
 }

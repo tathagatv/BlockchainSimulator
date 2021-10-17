@@ -7,11 +7,12 @@ import networkx as nx
 import pydot
 from networkx.drawing.nx_pydot import graphviz_layout
 from glob import glob
-from tqdm import tqdm
 from os.path import dirname, abspath
 import pandas as pd
 import numpy as np
+import warnings
 
+warnings.filterwarnings("ignore")
 
 def draw_blockchain(G, filename):
     pos = graphviz_layout(G, prog="dot")
@@ -122,14 +123,13 @@ stat_file = os.path.join(base, 'peer_stats', peer)
 df = pd.read_csv(stat_file, index_col='id')
 
 total_hash_power = df['hash_power'].sum()
-
 adversary_stats = df.loc[adversary].copy()
 mpu_adv = adversary_stats['chain_blocks'] / adversary_stats['generated_blocks']
-print(f'MPU_adv = {mpu_adv:.5f}')
-print(f'Gamma 0 = {R_pool(0.35, 0)}')
-print(f'Gamma 1 = {R_pool(0.35, 1)}')
+alpha = round(adversary_stats['hash_power'] / total_hash_power, 2)
 
-print(adversary_stats['hash_power'] / total_hash_power)
+print(f'MPU_adv = {mpu_adv:.5f}')
+print(f'Gamma_0 = {R_pool(alpha, 0)}')
+print(f'Gamma_1 = {R_pool(alpha, 1)}')
 
 # for hash_pwr_is_fast, grp_df in df.groupby(['hash_power', 'is_fast']):
 #     hash_pwr, is_fast = hash_pwr_is_fast
@@ -139,6 +139,7 @@ print(adversary_stats['hash_power'] / total_hash_power)
 
 df = df.sort_values(by='hash_power').reset_index(drop=True)
 total_blocks_in_chain = df['generated_blocks'].sum()
+print(total_blocks_in_chain)
 fraction_blocks_in_chain = df['chain_blocks'].to_numpy() / total_blocks_in_chain
 peer_ids = df.index.to_numpy()
 slow_peers = df[df['is_fast'] == 0]

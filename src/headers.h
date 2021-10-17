@@ -33,6 +33,7 @@
 #include <utility>
 #include <vector>
 #include <filesystem>
+#include "trace.h"
 
 namespace fs = std::filesystem;
 using namespace std;

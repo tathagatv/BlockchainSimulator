@@ -320,6 +320,9 @@ void Peer::receive_block(Simulator* sim, Peer* sender, Block* block) {
     if (chain_it != chain_blocks.end() || free_it != free_blocks.end() || reject_it != rejected_blocks.end()) 
         return;
 
+    // if (block->id == 4)
+    //     trace(id, block);
+
     block_arrival_times.emplace_back(make_pair(block, sim->current_timestamp));
     // forward every received block regardless of validity
     Event* ev = new ForwardBlock(0, this, sender, block->clone());
@@ -329,7 +332,6 @@ void Peer::receive_block(Simulator* sim, Peer* sender, Block* block) {
 
     // block parent not in our blockchain
     if (chain_it == chain_blocks.end()) {
-        block->reset_parent();
         free_blocks[block->id] = block;
         free_block_parents[block->parent_id].emplace_back(block);
         return;
@@ -436,6 +438,7 @@ void Peer::export_arrival_times(ostream& os) {
         return (a1.first->id) < (a2.first->id);
     });
 
+
     os << get_name() << '\n';
     for (pair<Block*, ld>& p : block_arrival_times) {
         Block* b = p.first;
@@ -464,7 +467,7 @@ void Peer::export_stats(Simulator* sim, ostream& os) {
     Block* deepest_block = blockchain.genesis;
     vector<int> total_blocks(total_peers, 0);
     traverse_blockchain(blockchain.genesis, fake, deepest_block, total_blocks);
-    
+
     vector<int> blocks_in_chain(total_peers, 0);
     while (deepest_block->id != blockchain.genesis->id) {
         blocks_in_chain[deepest_block->owner->id]++;

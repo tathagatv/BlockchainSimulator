@@ -295,7 +295,6 @@ void Peer::free_blocks_dfs(Block* block, vector<int>& cur_balances, custom_unord
     for (Block* child : it->second) {
         assert(child->parent == NULL);
         child->set_parent(block);
-        (block->next).emplace_back(child);
         free_blocks.erase(child->id);
         free_blocks_dfs(child, cur_balances, blocks_to_add, deepest_block, sim);
     }
@@ -415,10 +414,8 @@ void Peer::receive_block(Simulator* sim, Peer* sender, Block* block) {
 }
 
 /* output the edges in blockchain in os and update deepest_block */
-void Peer::traverse_blockchain(Block* b, ostream& os, Block*& deepest_block, vector<int>& total_blocks, set<int> &visited) {
+void Peer::traverse_blockchain(Block* b, ostream& os, Block*& deepest_block, vector<int>& total_blocks) {
     // for canonicalization
-    if(visited.count(b->id)) return;
-    visited.insert(b->id);
     sort(all(b->next), [](Block* a1, Block* a2) {
         return (a1->id) < (a2->id);
     });
@@ -431,7 +428,7 @@ void Peer::traverse_blockchain(Block* b, ostream& os, Block*& deepest_block, vec
     
     for (Block* c : b->next) {
         os << (b->id + 1) << ' ' << (c->id + 1) << '\n';
-        traverse_blockchain(c, os, deepest_block, total_blocks, visited);
+        traverse_blockchain(c, os, deepest_block, total_blocks);
     }
 }
 
@@ -461,8 +458,7 @@ void Peer::export_arrival_times(ostream& os) {
 void Peer::export_blockchain(ostream& os) {
     vector<int> total_blocks(total_peers, 0);
     Block* deepest_block = blockchain.genesis;
-    set<int> visited;
-    traverse_blockchain(blockchain.genesis, os, deepest_block, total_blocks, visited);
+    traverse_blockchain(blockchain.genesis, os, deepest_block, total_blocks);
 }
 
 /* output the final statistics to a file */
@@ -470,8 +466,7 @@ void Peer::export_stats(Simulator* sim, ostream& os) {
     ostream fake(0);
     Block* deepest_block = blockchain.genesis;
     vector<int> total_blocks(total_peers, 0);
-    set<int> visited;
-    traverse_blockchain(blockchain.genesis, fake, deepest_block, total_blocks, visited);
+    traverse_blockchain(blockchain.genesis, fake, deepest_block, total_blocks);
 
     vector<int> blocks_in_chain(total_peers, 0);
     while (deepest_block->id != blockchain.genesis->id) {
